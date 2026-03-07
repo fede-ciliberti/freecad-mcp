@@ -1,0 +1,15 @@
+node_modules/
+.venv/
+*.mp4
+*.avi
+*.mov
+*.mat
+*.fig
+*.zip
+*.tar.gz
+.DS_Store
+__pycache__/
+*.pyc
+dist/
+build/
+coverage/

@@ -1,0 +1,33 @@
+{
+  "name": "freecad-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for FreeCAD parametric 3D CAD modeling",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "freecad-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "freecad",
+    "cad",
+    "3d-modeling",
+    "parametric",
+    "step",
+    "stl"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}
