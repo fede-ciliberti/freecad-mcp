@@ -1,0 +1,121 @@
+"""
+FreeCAD MCP Socket Server
+Run this macro inside FreeCAD GUI to enable MCP tools to work directly
+in your running FreeCAD instance.
+
+Usage: In FreeCAD, go to Macro -> Macros -> select this file -> Execute
+"""
+
+import socket
+import threading
+import json
+import queue
+import FreeCAD
+import FreeCADGui
+import Part
+
+try:
+    from PySide6 import QtCore
+except ImportError:
+    from PySide2 import QtCore
+
+MCP_PORT = 12345
+
+_cmd_queue = queue.Queue()
+_result_dict = {}
+_result_events = {}
+_server_running = False
+
+
+def _handle_client(conn):
+    try:
+        data = b''
+        while True:
+            chunk = conn.recv(8192)
+            if not chunk:
+                break
+            data += chunk
+            if b'\n__MCP_END__\n' in data:
+                break
+
+        code = data.decode('utf-8').split('\n__MCP_END__\n')[0]
+
+        event = threading.Event()
+        req_id = id(event)
+        _result_events[req_id] = event
+
+        _cmd_queue.put((req_id, code))
+
+        event.wait(timeout=30)
+
+        result = _result_dict.pop(req_id, {"success": False, "error": "Timeout"})
+        _result_events.pop(req_id, None)
+
+        response = json.dumps(result).encode('utf-8')
+        conn.sendall(response)
+    except Exception as e:
+        try:
+            conn.sendall(json.dumps({"success": False, "error": str(e)}).encode('utf-8'))
+        except:
+            pass
+    finally:
+        conn.close()
+
+
+def _socket_server():
+    global _server_running
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        server.bind(('127.0.0.1', MCP_PORT))
+    except OSError as e:
+        FreeCAD.Console.PrintError(f"MCP Server: Port {MCP_PORT} already in use: {e}\n")
+        return
+    server.listen(1)
+    server.settimeout(1.0)
+    _server_running = True
+    FreeCAD.Console.PrintMessage(f"MCP Socket Server listening on 127.0.0.1:{MCP_PORT}\n")
+
+    while _server_running:
+        try:
+            conn, addr = server.accept()
+            _handle_client(conn)
+        except socket.timeout:
+            continue
+        except Exception as e:
+            if _server_running:
+                FreeCAD.Console.PrintError(f"MCP Server error: {e}\n")
+
+    server.close()
+    FreeCAD.Console.PrintMessage("MCP Socket Server stopped.\n")
+
+
+def _process_queue():
+    while not _cmd_queue.empty():
+        try:
+            req_id, code = _cmd_queue.get_nowait()
+            _mcp_result = {"success": True}
+            exec_globals = dict(globals())
+            exec_globals["_mcp_result"] = _mcp_result
+            try:
+                exec(code, exec_globals)
+                _mcp_result = exec_globals["_mcp_result"]
+            except Exception as e:
+                _mcp_result = {"success": False, "error": str(e)}
+
+            _result_dict[req_id] = _mcp_result
+            _result_events[req_id].set()
+        except queue.Empty:
+            break
+
+
+# Start socket server thread
+_server_thread = threading.Thread(target=_socket_server, daemon=True)
+_server_thread.start()
+
+# Poll queue on main thread via QTimer
+_timer = QtCore.QTimer()
+_timer.timeout.connect(_process_queue)
+_timer.start(50)
+
+FreeCAD.Console.PrintMessage("MCP Server macro loaded. Waiting for connections...\n")

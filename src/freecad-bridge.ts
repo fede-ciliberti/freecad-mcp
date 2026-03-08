@@ -2,15 +2,19 @@ import { spawn, ChildProcess } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import * as net from 'node:net';
 import { FreeCADResult } from './types.js';
 
 const DEFAULT_FREECAD_APP = '/Applications/FreeCAD.app/Contents/Resources';
 const RESULT_MARKER = '__MCP_RESULT__';
+const SOCKET_PORT = 12345;
+const SOCKET_HOST = '127.0.0.1';
 
 /**
  * Persistent FreeCAD bridge.
- * Spawns a custom Python REPL with FreeCAD imported that reads
- * code snippets from stdin and executes them. All state persists.
+ * Supports two modes:
+ *   - Socket mode: connects to a running FreeCAD GUI with the MCP server macro
+ *   - Headless mode: spawns a freecadcmd Python REPL (fallback)
  */
 export class FreeCADBridge {
   private freecadApp: string;
@@ -22,6 +26,7 @@ export class FreeCADBridge {
   private pendingReject: ((reason: Error) => void) | null = null;
   private pendingMarker = '';
   private replScriptPath: string;
+  private useSocket: boolean | null = null; // null = auto-detect
 
   constructor(freecadCmd?: string, timeout: number = 30000) {
     const cmd = freecadCmd || process.env.FREECAD_CMD || `${DEFAULT_FREECAD_APP}/bin/freecadcmd`;
@@ -31,12 +36,77 @@ export class FreeCADBridge {
     this.replScriptPath = join(tmpdir(), 'freecad-mcp-repl.py');
   }
 
+  private async checkSocket(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const client = new net.Socket();
+      client.setTimeout(1000);
+      client.connect(SOCKET_PORT, SOCKET_HOST, () => {
+        client.destroy();
+        resolve(true);
+      });
+      client.on('error', () => {
+        client.destroy();
+        resolve(false);
+      });
+      client.on('timeout', () => {
+        client.destroy();
+        resolve(false);
+      });
+    });
+  }
+
+  private async executeSocket(pythonCode: string): Promise<FreeCADResult> {
+    return new Promise((resolve) => {
+      const client = new net.Socket();
+      let data = '';
+      let resolved = false;
+
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          client.destroy();
+          resolve({ success: false, error: `Socket execution timed out after ${this.timeout}ms` });
+        }
+      }, this.timeout);
+
+      client.connect(SOCKET_PORT, SOCKET_HOST, () => {
+        client.write(pythonCode + '\n__MCP_END__\n');
+      });
+
+      client.on('data', (chunk) => {
+        data += chunk.toString();
+      });
+
+      client.on('end', () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          try {
+            const result = JSON.parse(data) as FreeCADResult;
+            resolve(result);
+          } catch {
+            resolve({ success: false, error: 'Failed to parse response from FreeCAD GUI' });
+          }
+        }
+      });
+
+      client.on('error', (err) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          resolve({ success: false, error: `Socket error: ${err.message}` });
+        }
+      });
+    });
+  }
+
+  // --- Headless mode (original) ---
+
   private async ensureProcess(): Promise<void> {
     if (this.ready && this.process && this.process.exitCode === null) {
       return this.ready;
     }
 
-    // Write the REPL script
     const replScript = `
 import sys
 import json
@@ -56,7 +126,6 @@ while True:
         if not line.startswith("__MCP_EXEC__"):
             continue
 
-        # Read the number of lines to follow
         count = int(line.split(":")[1])
         code_lines = []
         for _ in range(count):
@@ -149,7 +218,7 @@ while True:
     return this.ready;
   }
 
-  async execute(pythonCode: string): Promise<FreeCADResult> {
+  private async executeHeadless(pythonCode: string): Promise<FreeCADResult> {
     await this.ensureProcess();
     const proc = this.process!;
 
@@ -201,6 +270,33 @@ while True:
     }
   }
 
+  // --- Public API ---
+
+  async execute(pythonCode: string): Promise<FreeCADResult> {
+    // Auto-detect mode on first call
+    if (this.useSocket === null) {
+      this.useSocket = await this.checkSocket();
+      if (this.useSocket) {
+        console.error('[FreeCAD MCP] Connected to FreeCAD GUI via socket');
+      } else {
+        console.error('[FreeCAD MCP] GUI socket not available, using headless mode');
+      }
+    }
+
+    if (this.useSocket) {
+      const result = await this.executeSocket(pythonCode);
+      // If socket fails mid-session, fall back to headless
+      if (!result.success && result.error?.includes('Socket error')) {
+        console.error('[FreeCAD MCP] Socket connection lost, switching to headless mode');
+        this.useSocket = false;
+        return this.executeHeadless(pythonCode);
+      }
+      return result;
+    }
+
+    return this.executeHeadless(pythonCode);
+  }
+
   async run(pythonCode: string): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
     const result = await this.execute(pythonCode);
     if (!result.success) {
@@ -215,6 +311,11 @@ while True:
     return {
       content: [{ type: 'text', text }],
     };
+  }
+
+  /** Force re-detection of socket vs headless mode */
+  resetMode(): void {
+    this.useSocket = null;
   }
 
   destroy(): void {

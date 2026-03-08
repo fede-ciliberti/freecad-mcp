@@ -1,5 +1,6 @@
 import { FreeCADBridge } from '../freecad-bridge.js';
 import { ToolResult, ToolArgs } from '../types.js';
+import { validatePositiveNumber, validateNumber } from '../validation.js';
 
 export const OPERATION_TOOLS = [
   {
@@ -138,6 +139,97 @@ export const OPERATION_TOOLS = [
       required: ['objectName', 'plane'],
     },
   },
+  {
+    name: 'freecad_check_geometry',
+    description: 'Validate an object\'s geometry — check for shape errors (self-intersections, open shells, invalid faces, etc.)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objectName: { type: 'string', description: 'Name of the object to check' },
+      },
+      required: ['objectName'],
+    },
+  },
+  {
+    name: 'freecad_refine_shape',
+    description: 'Remove redundant edges and faces from boolean operation results (clean up artifacts)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objectName: { type: 'string', description: 'Name of the object to refine' },
+        name: { type: 'string', description: 'Name for the refined object' },
+      },
+      required: ['objectName'],
+    },
+  },
+  {
+    name: 'freecad_boolean_fragments',
+    description: 'Split overlapping shapes into all distinct non-overlapping fragments (generalized boolean)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objectNames: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names of objects to fragment',
+        },
+        name: { type: 'string', description: 'Name for the result' },
+      },
+      required: ['objectNames'],
+    },
+  },
+  {
+    name: 'freecad_slice',
+    description: 'Slice an object using another object as a cutting tool (splits into two or more pieces)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        baseName: { type: 'string', description: 'Name of the object to slice' },
+        toolName: { type: 'string', description: 'Name of the cutting tool object' },
+        name: { type: 'string', description: 'Name for the result' },
+      },
+      required: ['baseName', 'toolName'],
+    },
+  },
+  {
+    name: 'freecad_boolean_xor',
+    description: 'Boolean XOR: keep only the non-overlapping parts of two objects (exclusive OR)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        object1: { type: 'string', description: 'Name of the first object' },
+        object2: { type: 'string', description: 'Name of the second object' },
+        name: { type: 'string', description: 'Name for the result' },
+      },
+      required: ['object1', 'object2'],
+    },
+  },
+  {
+    name: 'freecad_join_connect',
+    description: 'Connect walled objects (e.g., two pipes meeting) — creates a smooth connection between hollow shapes',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        object1: { type: 'string', description: 'Name of the first walled object' },
+        object2: { type: 'string', description: 'Name of the second walled object' },
+        name: { type: 'string', description: 'Name for the result' },
+      },
+      required: ['object1', 'object2'],
+    },
+  },
+  {
+    name: 'freecad_join_cutout',
+    description: 'Create a cutout in a walled object for another object to pass through (e.g., pipe through wall)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        object1: { type: 'string', description: 'Name of the object to cut into (e.g., wall)' },
+        object2: { type: 'string', description: 'Name of the object that passes through' },
+        name: { type: 'string', description: 'Name for the result' },
+      },
+      required: ['object1', 'object2'],
+    },
+  },
 ];
 
 export async function handleOperationTool(
@@ -208,7 +300,7 @@ _mcp_result["result"] = {"name": common.Name, "volume": common.Shape.Volume}
 
     case 'freecad_fillet': {
       const objectName = args.objectName as string;
-      const radius = args.radius as number;
+      const radius = validatePositiveNumber(args.radius, 'radius');
       const edgeIndices = args.edgeIndices as number[] | undefined;
       const edgesPython = edgeIndices
         ? `[${edgeIndices.map(i => `(${i}, ${radius}, ${radius})`).join(', ')}]`
@@ -229,7 +321,7 @@ _mcp_result["result"] = {"name": fillet.Name, "edges": len(edges)}
 
     case 'freecad_chamfer': {
       const objectName = args.objectName as string;
-      const distance = args.distance as number;
+      const distance = validatePositiveNumber(args.distance, 'distance');
       const edgeIndices = args.edgeIndices as number[] | undefined;
       const edgesPython = edgeIndices
         ? `[${edgeIndices.map(i => `(${i}, ${distance}, ${distance})`).join(', ')}]`
@@ -334,6 +426,126 @@ mirror_obj = doc.addObject("Part::Feature", ${JSON.stringify(mirrorName)})
 mirror_obj.Shape = mirrored_shape
 doc.recompute()
 _mcp_result["result"] = {"name": mirror_obj.Name, "plane": ${JSON.stringify(plane)}}
+`);
+    }
+
+    case 'freecad_check_geometry': {
+      const objectName = args.objectName as string;
+      return bridge.run(`
+doc = FreeCAD.ActiveDocument
+obj = doc.getObject(${JSON.stringify(objectName)})
+if obj is None:
+    raise ValueError("Object not found: ${objectName}")
+shape = obj.Shape
+is_valid = shape.isValid()
+is_closed = shape.isClosed() if hasattr(shape, 'isClosed') else None
+checks = {
+    "isValid": is_valid,
+    "isClosed": is_closed,
+    "faces": len(shape.Faces),
+    "edges": len(shape.Edges),
+    "vertices": len(shape.Vertexes),
+    "shells": len(shape.Shells),
+    "solids": len(shape.Solids),
+    "shapeType": shape.ShapeType,
+}
+errors = []
+try:
+    shape.check()
+except Exception as e:
+    errors.append(str(e))
+checks["errors"] = errors
+_mcp_result["result"] = checks
+`);
+    }
+
+    case 'freecad_refine_shape': {
+      const objectName = args.objectName as string;
+      const refinedName = (args.name as string) || 'Refined';
+      return bridge.run(`
+doc = FreeCAD.ActiveDocument
+obj = doc.getObject(${JSON.stringify(objectName)})
+if obj is None:
+    raise ValueError("Object not found: ${objectName}")
+refined_shape = obj.Shape.removeSplitter()
+result = doc.addObject("Part::Feature", ${JSON.stringify(refinedName)})
+result.Shape = refined_shape
+doc.recompute()
+_mcp_result["result"] = {"name": result.Name, "faces_before": len(obj.Shape.Faces), "faces_after": len(refined_shape.Faces), "edges_before": len(obj.Shape.Edges), "edges_after": len(refined_shape.Edges)}
+`);
+    }
+
+    case 'freecad_boolean_fragments': {
+      const objectNames = args.objectNames as string[];
+      const bfName = (args.name as string) || 'BooleanFragments';
+      return bridge.run(`
+doc = FreeCAD.ActiveDocument
+import BOPTools.SplitFeatures
+bf = BOPTools.SplitFeatures.makeBooleanFragments(${JSON.stringify(bfName)})
+bf.Objects = [doc.getObject(n) for n in ${JSON.stringify(objectNames)}]
+bf.Mode = "Standard"
+doc.recompute()
+pieces = len(bf.Shape.Solids) if bf.Shape.Solids else len(bf.Shape.Faces)
+_mcp_result["result"] = {"name": bf.Name, "inputObjects": ${JSON.stringify(objectNames)}, "fragments": pieces}
+`);
+    }
+
+    case 'freecad_slice': {
+      const baseName = args.baseName as string;
+      const toolName = args.toolName as string;
+      const sliceName = (args.name as string) || 'Slice';
+      return bridge.run(`
+doc = FreeCAD.ActiveDocument
+import BOPTools.SplitFeatures
+sl = BOPTools.SplitFeatures.makeSlice(${JSON.stringify(sliceName)})
+sl.Base = doc.getObject(${JSON.stringify(baseName)})
+sl.Tools = [doc.getObject(${JSON.stringify(toolName)})]
+sl.Mode = "Standard"
+doc.recompute()
+pieces = len(sl.Shape.Solids) if sl.Shape.Solids else len(sl.Shape.Faces)
+_mcp_result["result"] = {"name": sl.Name, "base": ${JSON.stringify(baseName)}, "tool": ${JSON.stringify(toolName)}, "pieces": pieces}
+`);
+    }
+
+    case 'freecad_boolean_xor': {
+      const obj1 = args.object1 as string;
+      const obj2 = args.object2 as string;
+      const xorName = (args.name as string) || 'XOR';
+      return bridge.run(`
+doc = FreeCAD.ActiveDocument
+import BOPTools.SplitFeatures
+xor = BOPTools.SplitFeatures.makeXOR(${JSON.stringify(xorName)})
+xor.Objects = [doc.getObject(${JSON.stringify(obj1)}), doc.getObject(${JSON.stringify(obj2)})]
+doc.recompute()
+_mcp_result["result"] = {"name": xor.Name, "volume": xor.Shape.Volume}
+`);
+    }
+
+    case 'freecad_join_connect': {
+      const obj1 = args.object1 as string;
+      const obj2 = args.object2 as string;
+      const joinName = (args.name as string) || 'JoinConnect';
+      return bridge.run(`
+doc = FreeCAD.ActiveDocument
+j = doc.addObject("Part::JoinConnect", ${JSON.stringify(joinName)})
+j.Object1 = doc.getObject(${JSON.stringify(obj1)})
+j.Object2 = doc.getObject(${JSON.stringify(obj2)})
+doc.recompute()
+_mcp_result["result"] = {"name": j.Name, "volume": j.Shape.Volume}
+`);
+    }
+
+    case 'freecad_join_cutout': {
+      const obj1 = args.object1 as string;
+      const obj2 = args.object2 as string;
+      const joinName = (args.name as string) || 'JoinCutout';
+      return bridge.run(`
+doc = FreeCAD.ActiveDocument
+j = doc.addObject("Part::JoinCutout", ${JSON.stringify(joinName)})
+j.Object1 = doc.getObject(${JSON.stringify(obj1)})
+j.Object2 = doc.getObject(${JSON.stringify(obj2)})
+doc.recompute()
+_mcp_result["result"] = {"name": j.Name, "volume": j.Shape.Volume}
 `);
     }
 

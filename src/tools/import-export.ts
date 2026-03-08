@@ -1,5 +1,6 @@
 import { FreeCADBridge } from '../freecad-bridge.js';
 import { ToolResult, ToolArgs } from '../types.js';
+import { validateFilePath, validateString, validateArray, escapePythonString } from '../validation.js';
 
 export const IMPORT_EXPORT_TOOLS = [
   {
@@ -132,13 +133,111 @@ export const IMPORT_EXPORT_TOOLS = [
   },
   {
     name: 'freecad_execute_python',
-    description: 'Execute arbitrary FreeCAD Python code. The code runs in a context with FreeCAD and Part already imported. Set _mcp_result["result"] to return data.',
+    description: 'Execute arbitrary FreeCAD Python code. WARNING: This tool runs arbitrary Python code with full system access. Only use in trusted environments. The code runs in a context with FreeCAD and Part already imported. Set _mcp_result["result"] to return data.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         code: { type: 'string', description: 'Python code to execute in FreeCAD' },
       },
       required: ['code'],
+    },
+  },
+  {
+    name: 'freecad_import_iges',
+    description: 'Import an IGES file into a FreeCAD document.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        filePath: { type: 'string', description: 'Absolute path to the IGES file (.igs or .iges)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'freecad_import_dxf',
+    description: 'Import a DXF file into a FreeCAD document.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        filePath: { type: 'string', description: 'Absolute path to the DXF file' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'freecad_import_svg',
+    description: 'Import an SVG file into a FreeCAD document.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        filePath: { type: 'string', description: 'Absolute path to the SVG file' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'freecad_export_iges',
+    description: 'Export objects to an IGES file.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objectNames: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names of objects to export',
+        },
+        filePath: { type: 'string', description: 'Absolute path for the output IGES file' },
+      },
+      required: ['objectNames', 'filePath'],
+    },
+  },
+  {
+    name: 'freecad_export_dxf',
+    description: 'Export objects to a DXF file.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objectNames: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names of objects to export',
+        },
+        filePath: { type: 'string', description: 'Absolute path for the output DXF file' },
+      },
+      required: ['objectNames', 'filePath'],
+    },
+  },
+  {
+    name: 'freecad_export_svg',
+    description: 'Export objects to an SVG file (projected 2D view).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objectNames: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names of objects to export',
+        },
+        filePath: { type: 'string', description: 'Absolute path for the output SVG file' },
+        direction: {
+          type: 'string',
+          enum: ['Front', 'Top', 'Right', 'Isometric'],
+          description: 'Projection direction (default: Front)',
+        },
+      },
+      required: ['objectNames', 'filePath'],
+    },
+  },
+  {
+    name: 'freecad_export_brep',
+    description: 'Export objects to BREP format (native OpenCASCADE boundary representation).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objectName: { type: 'string', description: 'Name of the object to export' },
+        filePath: { type: 'string', description: 'Absolute path for the output BREP file' },
+      },
+      required: ['objectName', 'filePath'],
     },
   },
 ];
@@ -148,7 +247,7 @@ if doc is None:
     doc = FreeCAD.newDocument("Unnamed")`;
 
 function escapeString(s: string): string {
-  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return escapePythonString(s);
 }
 
 function toJsonArray(arr: unknown[]): string {
@@ -162,8 +261,8 @@ export async function handleImportExportTool(
 ): Promise<ToolResult> {
   switch (name) {
     case 'freecad_import_step': {
-      const filePath = escapeString(args.filePath as string);
-      const docName = args.documentName ? escapeString(args.documentName as string) : null;
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      const docName = args.documentName ? escapeString(validateString(args.documentName, 'documentName')) : null;
       const code = `
 ${DOC_PREAMBLE}
 ${docName ? `doc = FreeCAD.getDocument("${docName}") if "${docName}" in [d.Name for d in FreeCAD.listDocuments().values()] else doc` : ''}
@@ -175,8 +274,8 @@ _mcp_result["result"] = {"document": doc.Name, "objects": [o.Name for o in doc.O
     }
 
     case 'freecad_import_stl': {
-      const filePath = escapeString(args.filePath as string);
-      const docName = args.documentName ? escapeString(args.documentName as string) : null;
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      const docName = args.documentName ? escapeString(validateString(args.documentName, 'documentName')) : null;
       const code = `
 ${DOC_PREAMBLE}
 ${docName ? `doc = FreeCAD.getDocument("${docName}") if "${docName}" in [d.Name for d in FreeCAD.listDocuments().values()] else doc` : ''}
@@ -189,8 +288,8 @@ _mcp_result["result"] = {"document": doc.Name, "objects": [o.Name for o in doc.O
     }
 
     case 'freecad_export_step': {
-      const objectNames = args.objectNames as string[];
-      const filePath = escapeString(args.filePath as string);
+      const objectNames = validateArray(args.objectNames, 'objectNames') as string[];
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
       const code = `
 ${DOC_PREAMBLE}
 obj_names = ${toJsonArray(objectNames)}
@@ -206,8 +305,8 @@ _mcp_result["result"] = {"exported": obj_names, "filePath": "${filePath}", "size
     }
 
     case 'freecad_export_stl': {
-      const objectNames = args.objectNames as string[];
-      const filePath = escapeString(args.filePath as string);
+      const objectNames = validateArray(args.objectNames, 'objectNames') as string[];
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
       const code = `
 ${DOC_PREAMBLE}
 import Mesh
@@ -227,8 +326,8 @@ _mcp_result["result"] = {"exported": obj_names, "filePath": "${filePath}"}
     }
 
     case 'freecad_export_obj': {
-      const objectNames = args.objectNames as string[];
-      const filePath = escapeString(args.filePath as string);
+      const objectNames = validateArray(args.objectNames, 'objectNames') as string[];
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
       const code = `
 ${DOC_PREAMBLE}
 import Mesh
@@ -361,6 +460,111 @@ _mcp_result["result"] = {
       return bridge.run(`
 ${DOC_PREAMBLE}
 ${code}
+`);
+    }
+
+    case 'freecad_import_iges': {
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      return bridge.run(`
+${DOC_PREAMBLE}
+import ImportGui
+ImportGui.insert("${filePath}", doc.Name)
+doc.recompute()
+_mcp_result["result"] = {"document": doc.Name, "objects": [o.Name for o in doc.Objects], "file": "${filePath}"}
+`);
+    }
+
+    case 'freecad_import_dxf': {
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      return bridge.run(`
+${DOC_PREAMBLE}
+import importDXF
+importDXF.insert("${filePath}", doc.Name)
+doc.recompute()
+_mcp_result["result"] = {"document": doc.Name, "objects": [o.Name for o in doc.Objects], "file": "${filePath}"}
+`);
+    }
+
+    case 'freecad_import_svg': {
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      return bridge.run(`
+${DOC_PREAMBLE}
+import importSVG
+importSVG.insert("${filePath}", doc.Name)
+doc.recompute()
+_mcp_result["result"] = {"document": doc.Name, "objects": [o.Name for o in doc.Objects], "file": "${filePath}"}
+`);
+    }
+
+    case 'freecad_export_iges': {
+      const objectNames = validateArray(args.objectNames, 'objectNames') as string[];
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      return bridge.run(`
+${DOC_PREAMBLE}
+obj_names = ${toJsonArray(objectNames)}
+objs = [doc.getObject(n) for n in obj_names]
+missing = [n for n, o in zip(obj_names, objs) if o is None]
+if missing:
+    raise ValueError(f"Objects not found: {missing}")
+Part.export(objs, "${filePath}")
+import os
+_mcp_result["result"] = {"exported": obj_names, "filePath": "${filePath}", "size_bytes": os.path.getsize("${filePath}")}
+`);
+    }
+
+    case 'freecad_export_dxf': {
+      const objectNames = validateArray(args.objectNames, 'objectNames') as string[];
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      return bridge.run(`
+${DOC_PREAMBLE}
+import importDXF
+obj_names = ${toJsonArray(objectNames)}
+objs = [doc.getObject(n) for n in obj_names]
+missing = [n for n, o in zip(obj_names, objs) if o is None]
+if missing:
+    raise ValueError(f"Objects not found: {missing}")
+importDXF.export(objs, "${filePath}")
+import os
+_mcp_result["result"] = {"exported": obj_names, "filePath": "${filePath}", "size_bytes": os.path.getsize("${filePath}")}
+`);
+    }
+
+    case 'freecad_export_svg': {
+      const objectNames = validateArray(args.objectNames, 'objectNames') as string[];
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      const direction = (args.direction as string) || 'Front';
+      const dirMap: Record<string, string> = {
+        Front: 'FreeCAD.Vector(0, 0, -1)',
+        Top: 'FreeCAD.Vector(0, -1, 0)',
+        Right: 'FreeCAD.Vector(1, 0, 0)',
+        Isometric: 'FreeCAD.Vector(1, 1, 1)',
+      };
+      const dirVec = dirMap[direction] || dirMap['Front'];
+      return bridge.run(`
+${DOC_PREAMBLE}
+import importSVG
+obj_names = ${toJsonArray(objectNames)}
+objs = [doc.getObject(n) for n in obj_names]
+missing = [n for n, o in zip(obj_names, objs) if o is None]
+if missing:
+    raise ValueError(f"Objects not found: {missing}")
+importSVG.export(objs, "${filePath}")
+import os
+_mcp_result["result"] = {"exported": obj_names, "filePath": "${filePath}", "size_bytes": os.path.getsize("${filePath}")}
+`);
+    }
+
+    case 'freecad_export_brep': {
+      const objectName = args.objectName as string;
+      const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
+      return bridge.run(`
+${DOC_PREAMBLE}
+obj = doc.getObject(${JSON.stringify(objectName)})
+if obj is None:
+    raise ValueError("Object not found: ${objectName}")
+obj.Shape.exportBrep("${filePath}")
+import os
+_mcp_result["result"] = {"exported": ${JSON.stringify(objectName)}, "filePath": "${filePath}", "size_bytes": os.path.getsize("${filePath}")}
 `);
     }
 

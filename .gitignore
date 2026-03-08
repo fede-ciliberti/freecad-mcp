@@ -13,3 +13,22 @@ __pycache__/
 dist/
 build/
 coverage/
+
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+credentials.json
+secrets.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
