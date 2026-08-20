@@ -1,0 +1,19 @@
+[PASS] freecad_draft_wire
+[PASS] freecad_draft_bspline
+[PASS] freecad_draft_polygon
+[PASS] freecad_draft_ellipse
+[PASS] freecad_draft_rectangle
+[PASS] freecad_draft_shapestring
+[PASS] freecad_draft_clone
+[PASS] freecad_draft_move
+[PASS] freecad_draft_rotate
+[PASS] freecad_draft_scale
+[PASS] freecad_draft_offset
+[PASS] freecad_draft_upgrade
+[PASS] freecad_draft_downgrade
+[PASS] freecad_draft_path_array
+[PASS] freecad_draft_dimension
+[PASS] freecad_draft_shape2dview
+[PASS] freecad_draft_facebinder
+
+Resultados guardados en scripts/resultados/draft.txt

@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as net from 'node:net';
 import { FreeCADResult } from './types.js';
@@ -30,8 +30,8 @@ export class FreeCADBridge {
 
   constructor(freecadCmd?: string, timeout: number = 30000) {
     const cmd = freecadCmd || process.env.FREECAD_CMD || `${DEFAULT_FREECAD_APP}/bin/freecadcmd`;
-    const match = cmd.match(/^(.+\/Contents\/Resources)/);
-    this.freecadApp = match ? match[1] : DEFAULT_FREECAD_APP;
+    // App root = parent of the bin dir: macOS (.../Resources/bin) and AppImage (.../usr/bin)
+    this.freecadApp = dirname(dirname(cmd));
     this.timeout = timeout;
     this.replScriptPath = join(tmpdir(), 'freecad-mcp-repl.py');
   }

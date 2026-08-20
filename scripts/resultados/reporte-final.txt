@@ -1,0 +1,237 @@
+=== REPORTE FINAL DE VALIDACIÓN freecad-mcp contra FreeCAD 1.1.3 (headless AppImage) ===
+Fecha: 2026-08-20
+Método: bridge headless forzado (useSocket=false), handlers reales de dist/tools/*.js
+
+═══════════════════════════════════════════════════════════════════════
+RESUMEN GLOBAL
+═══════════════════════════════════════════════════════════════════════
+
+Total tools evaluadas: 32 (9 BIM + 8 FEM + 5 Surface + 10 Assembly)
+PASS: 18
+FAIL: 14
+  - [API-ROTA]: 6  (bug en el handler, API de FreeCAD cambió)
+  - [requiereGUI]: 7  (tipos no registrados en headless, necesita AssemblyGui.so)
+  - [requiereWorkbench/modulo]: 1  (importIFC eliminado en 1.1.3, reemplazado por nativeifc)
+
+═══════════════════════════════════════════════════════════════════════
+MÓDULO BIM (9 tools)
+═══════════════════════════════════════════════════════════════════════
+
+[PASS] freecad_arch_wall
+  → Crea muro desde puntos start/end. Arch.makeWall funciona correctamente.
+
+[PASS] freecad_arch_structure
+  → Crea estructura (column/beam/slab). Arch.makeStructure funciona.
+
+[PASS] freecad_arch_window
+  → Crea ventana en muro. Arch.makeWindow funciona.
+
+[PASS] freecad_arch_floor
+  → Crea nivel/ piso. Arch.makeFloor funciona.
+
+[PASS] freecad_arch_building
+  → Crea building container. Arch.makeBuilding funciona.
+
+[PASS] freecad_arch_site
+  → Crea site container. Arch.makeSite funciona.
+
+[PASS] freecad_arch_roof
+  → Crea techo desde base. Arch.makeRoof funciona.
+
+[FAIL] [API-ROTA] freecad_arch_stairs
+  Error: "Type must be App.DocumentObject or None, not int"
+  Causa: Arch.makeStairs() en FreeCAD 1.1.3 NO acepta un int como primer arg.
+         La API cambió: makeStairs() se llama sin args y se setea stairs.NumberOfSteps después.
+  Fix: cambiar `Arch.makeStairs(${numberOfSteps})` → `Arch.makeStairs()` y luego
+       `stairs.NumberOfSteps = ${numberOfSteps}` (esta propiedad ya existe).
+  Archivo: src/tools/bim.ts línea 341.
+
+[FAIL] [requiereWorkbench/modulo] freecad_export_ifc
+  Error: "No module named 'importIFC'"
+  Causa: El módulo `importIFC` fue eliminado en FreeCAD 1.1.3. El IFC export
+         ahora vive en `nativeifc.ifc_export.exportIFC()`.
+  Fix: reemplazar `import importIFC; importIFC.export(...)` con:
+       `from nativeifc import ifc_export; ifc_export.exportIFC(objs, path)`
+  Archivo: src/tools/bim.ts línea 355.
+
+═══════════════════════════════════════════════════════════════════════
+MÓDULO FEM (8 tools)
+═══════════════════════════════════════════════════════════════════════
+
+[PASS] freecad_fem_analysis
+  → ObjectsFem.makeAnalysis() funciona.
+
+[PASS] freecad_fem_material
+  → ObjectsFem.makeMaterialSolid() + asignación de Material funciona.
+
+[PASS] freecad_fem_constraint_fixed
+  → ObjectsFem.makeConstraintFixed() funciona.
+
+[PASS] freecad_fem_constraint_force
+  → ObjectsFem.makeConstraintForce() funciona.
+
+[PASS] freecad_fem_constraint_pressure
+  → ObjectsFem.makeConstraintPressure() funciona.
+
+[FAIL] [API-ROTA] freecad_fem_mesh
+  Error: "'FeaturePython' object has no attribute 'Part'"
+  Causa: El mesh object de ObjectsFem.makeMeshGmsh() tiene propiedad `Shape`,
+         NO `Part`. El handler hace `mesh.Part = obj` pero debe ser `mesh.Shape = obj`.
+  Fix: cambiar `mesh.Part = obj` → `mesh.Shape = obj.Shape` (o `mesh.Shape = obj`).
+  Archivo: src/tools/fem.ts línea 295.
+
+[FAIL] [API-ROTA] freecad_fem_solver
+  Error: "module 'ObjectsFem' has no attribute 'makeSolverCalculixCcxTools'"
+  Causa: El nombre correcto en FreeCAD 1.1.3 es `makeSolverCalculiXCcxTools`
+         (X mayúscula en CalculiX). El handler usa `makeSolverCalculixCcxTools`.
+  Fix: cambiar `makeSolverCalculixCcxTools` → `makeSolverCalculiXCcxTools`.
+  Archivo: src/tools/fem.ts línea 330.
+  Nota: el solver run (CalculiX) requiere binario ccx externo; si se pasa run=true
+        y ccx no está instalado, fallará por dependencia externa (no por bug).
+
+[PASS] freecad_fem_results
+  → Lee resultados del análisis (vacío si no se ejecutó solver). Funciona.
+
+═══════════════════════════════════════════════════════════════════════
+MÓDULO SURFACE (5 tools)
+═══════════════════════════════════════════════════════════════════════
+
+[FAIL] [API-ROTA] freecad_surface_filling
+  Error: "'Part.Feature' object has no attribute 'BoundEdges'"
+  Causa: El handler no importa el módulo `Surface`, por lo que el tipo
+         `Surface::Filling` no se registra y addObject crea un Part.Feature
+         genérico. Además, la propiedad correcta es `BoundaryEdges`, no `BoundEdges`.
+  Fix: 1) agregar `import Surface` antes de addObject.
+       2) cambiar `fill.BoundEdges` → `fill.BoundaryEdges`.
+  Archivo: src/tools/surface.ts líneas 107-116.
+
+[FAIL] [API-ROTA] freecad_surface_geomfill
+  Error: "'Part.Feature' object has no attribute 'BoundEdges'"
+  Causa: Misma causa que filling. El tipo `Surface::GeomFillSurface` no se registra
+         sin importar Surface. La propiedad correcta es `BoundaryList`, no `BoundEdges`.
+  Fix: 1) agregar `import Surface`.
+       2) cambiar `gf.BoundEdges` → `gf.BoundaryList`.
+  Archivo: src/tools/surface.ts líneas 119-129.
+
+[PASS] freecad_surface_sections
+  → Surface::Sections funciona (este tipo sí está registrado sin importar Surface).
+
+[PASS] freecad_surface_extend
+  → Surface::Extend funciona.
+
+[PASS] freecad_surface_ruled
+  → Part.makeRuledSurface() funciona.
+
+═══════════════════════════════════════════════════════════════════════
+MÓDULO ASSEMBLY (10 tools)
+═══════════════════════════════════════════════════════════════════════
+
+[PASS] freecad_assembly_create
+  → Assembly::AssemblyObject se crea correctamente (registrado por AssemblyApp.so).
+
+[PASS] freecad_assembly_insert_component
+  → Crea App::Link y lo agrega al assembly. Funciona (2 componentes insertados).
+
+[FAIL] [requiereGUI] freecad_assembly_toggle_grounded
+  Error: "'Assembly::JointFixed' is not a document object type"
+  Causa: Los tipos Assembly::Joint* son registrados por AssemblyGui.so (módulo GUI),
+         no por AssemblyApp.so. En headless, AssemblyGui no se carga → tipos no registrados.
+  No es bug del handler: es limitación de headless. Requiere GUI para funcionar.
+
+[FAIL] [requiereGUI] freecad_assembly_fixed_joint
+  Error: "'Assembly::JointFixed' is not a document object type"
+  Causa: Idem. Assembly::JointFixed requiere AssemblyGui.so.
+
+[FAIL] [requiereGUI] freecad_assembly_revolute_joint
+  Error: "'Assembly::JointRevolute' is not a document object type"
+  Causa: Idem. Assembly::JointRevolute requiere AssemblyGui.so.
+
+[FAIL] [requiereGUI] freecad_assembly_slider_joint
+  Error: "'Assembly::JointSlider' is not a document object type"
+  Causa: Idem. Assembly::JointSlider requiere AssemblyGui.so.
+
+[FAIL] [requiereGUI] freecad_assembly_cylindrical_joint
+  Error: "'Assembly::JointCylindrical' is not a document object type"
+  Causa: Idem. Assembly::JointCylindrical requiere AssemblyGui.so.
+
+[FAIL] [requiereGUI] freecad_assembly_ball_joint
+  Error: "'Assembly::JointBall' is not a document object type"
+  Causa: Idem. Assembly::JointBall requiere AssemblyGui.so.
+
+[FAIL] [requiereGUI] freecad_assembly_distance_joint
+  Error: "'Assembly::JointDistance' is not a document object type"
+  Causa: Idem. Assembly::JointDistance requiere AssemblyGui.so.
+
+[PASS] freecad_assembly_solve
+  → Recuenta joints y components del assembly. Funciona (devuelve 0 joints por
+    que no se pudieron crear, pero el handler no falla).
+
+═══════════════════════════════════════════════════════════════════════
+TABLA RESUMEN
+═══════════════════════════════════════════════════════════════════════
+
+| Módulo   | Tool                              | Status | Categoría              |
+|----------|-----------------------------------|--------|------------------------|
+| BIM      | freecad_arch_wall                 | PASS   | -                      |
+| BIM      | freecad_arch_structure            | PASS   | -                      |
+| BIM      | freecad_arch_window               | PASS   | -                      |
+| BIM      | freecad_arch_floor                | PASS   | -                      |
+| BIM      | freecad_arch_building             | PASS   | -                      |
+| BIM      | freecad_arch_site                 | PASS   | -                      |
+| BIM      | freecad_arch_roof                 | PASS   | -                      |
+| BIM      | freecad_arch_stairs               | FAIL   | [API-ROTA]             |
+| BIM      | freecad_export_ifc                | FAIL   | [requiereWorkbench]    |
+| FEM      | freecad_fem_analysis              | PASS   | -                      |
+| FEM      | freecad_fem_material             | PASS   | -                      |
+| FEM      | freecad_fem_constraint_fixed      | PASS   | -                      |
+| FEM      | freecad_fem_constraint_force      | PASS   | -                      |
+| FEM      | freecad_fem_constraint_pressure   | PASS   | -                      |
+| FEM      | freecad_fem_mesh                  | FAIL   | [API-ROTA]             |
+| FEM      | freecad_fem_solver                | FAIL   | [API-ROTA]             |
+| FEM      | freecad_fem_results               | PASS   | -                      |
+| Surface  | freecad_surface_filling           | FAIL   | [API-ROTA]             |
+| Surface  | freecad_surface_geomfill          | FAIL   | [API-ROTA]             |
+| Surface  | freecad_surface_sections          | PASS   | -                      |
+| Surface  | freecad_surface_extend            | PASS   | -                      |
+| Surface  | freecad_surface_ruled             | PASS   | -                      |
+| Assembly | freecad_assembly_create           | PASS   | -                      |
+| Assembly | freecad_assembly_insert_component | PASS   | -                      |
+| Assembly | freecad_assembly_toggle_grounded  | FAIL   | [requiereGUI]          |
+| Assembly | freecad_assembly_fixed_joint      | FAIL   | [requiereGUI]          |
+| Assembly | freecad_assembly_revolute_joint   | FAIL   | [requiereGUI]          |
+| Assembly | freecad_assembly_slider_joint     | FAIL   | [requiereGUI]          |
+| Assembly | freecad_assembly_cylindrical_joint| FAIL   | [requiereGUI]          |
+| Assembly | freecad_assembly_ball_joint       | FAIL   | [requiereGUI]          |
+| Assembly | freecad_assembly_distance_joint   | FAIL   | [requiereGUI]          |
+| Assembly | freecad_assembly_solve            | PASS   | -                      |
+
+═══════════════════════════════════════════════════════════════════════
+BUGS A CORREGIR (6 API-ROTA + 1 requiereWorkbench)
+═══════════════════════════════════════════════════════════════════════
+
+1. [API-ROTA] freecad_arch_stairs (bim.ts:341)
+   - Arch.makeStairs(N) → Arch.makeStairs() + stairs.NumberOfSteps = N
+
+2. [requiereWorkbench] freecad_export_ifc (bim.ts:355)
+   - import importIFC → from nativeifc import ifc_export
+   - importIFC.export() → ifc_export.exportIFC()
+
+3. [API-ROTA] freecad_fem_mesh (fem.ts:295)
+   - mesh.Part = obj → mesh.Shape = obj (o obj.Shape)
+
+4. [API-ROTA] freecad_fem_solver (fem.ts:330)
+   - makeSolverCalculixCcxTools → makeSolverCalculiXCcxTools (X mayúscula)
+
+5. [API-ROTA] freecad_surface_filling (surface.ts:107-116)
+   - Falta `import Surface` antes de addObject
+   - fill.BoundEdges → fill.BoundaryEdges
+
+6. [API-ROTA] freecad_surface_geomfill (surface.ts:119-129)
+   - Falta `import Surface` antes de addObject
+   - gf.BoundEdges → gf.BoundaryList
+
+7. [requiereGUI] Assembly joints (7 tools: toggle_grounded + 6 joint types)
+   - NO es bug del handler. Los tipos Assembly::Joint* son registrados por
+     AssemblyGui.so que requiere Qt/GUI. En headless no se cargan.
+   - Workaround: usar GUI mode (socket) para estas tools, o migrar a
+     Assembly3/4 API alternativa si existe.

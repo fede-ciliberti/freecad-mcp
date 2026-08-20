@@ -1,0 +1,15 @@
+[PASS] freecad_thickness
+[PASS] freecad_offset_3d
+[PASS] freecad_section
+[PASS] freecad_compound
+[PASS] freecad_linear_array
+[PASS] freecad_polar_array
+[PASS] freecad_scale_object
+[PASS] freecad_extrude
+[PASS] freecad_get_center_of_mass
+[PASS] freecad_get_face_info
+[PASS] freecad_get_face_info
+[PASS] freecad_get_edge_info
+[PASS] freecad_get_edge_info
+
+--- Resumen guardado en scripts/resultados/advanced-operations.txt ---

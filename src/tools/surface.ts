@@ -106,11 +106,12 @@ export async function handleSurfaceTool(
       const edgeRefs = edgeNames.map(e => `(obj, ${JSON.stringify(e)})`).join(', ');
       return bridge.run(`
 ${DOC_PREAMBLE}
+import Surface
 obj = doc.getObject(${JSON.stringify(objectName)})
 if obj is None:
     raise ValueError("Object not found: ${objectName}")
 fill = doc.addObject("Surface::Filling", ${JSON.stringify(fillName)})
-fill.BoundEdges = [${edgeRefs}]
+fill.BoundaryEdges = [${edgeRefs}]
 doc.recompute()
 _mcp_result["result"] = {"name": fill.Name, "edges": ${JSON.stringify(edgeNames)}}
 `);
@@ -122,8 +123,9 @@ _mcp_result["result"] = {"name": fill.Name, "edges": ${JSON.stringify(edgeNames)
       const edgeRefs = edges.map(e => `(doc.getObject(${JSON.stringify(e.objectName)}), ${JSON.stringify(e.edgeName)})`).join(', ');
       return bridge.run(`
 ${DOC_PREAMBLE}
+import Surface
 gf = doc.addObject("Surface::GeomFillSurface", ${JSON.stringify(gfName)})
-gf.BoundEdges = [${edgeRefs}]
+gf.BoundaryList = [${edgeRefs}]
 doc.recompute()
 _mcp_result["result"] = {"name": gf.Name, "edgeCount": ${edges.length}}
 `);

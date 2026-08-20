@@ -1,0 +1,15 @@
+FEM validation results (2026-08-20T13:53:08.057Z)
+Total: 8
+PASS: 6
+FAIL: 2
+
+[API-ROTA] freecad_fem_analysis
+  FreeCAD error: FreeCAD execution timed out after 30000ms
+PASS freecad_fem_material
+PASS freecad_fem_constraint_fixed
+PASS freecad_fem_constraint_force
+PASS freecad_fem_constraint_pressure
+[API-ROTA] freecad_fem_mesh
+  FreeCAD error: FreeCAD execution timed out after 30000ms
+P
+Resumen guardado en /home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/fem.txt

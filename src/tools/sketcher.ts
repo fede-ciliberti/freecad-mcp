@@ -212,15 +212,16 @@ export const SKETCHER_TOOLS = [
   },
   {
     name: 'freecad_sketch_fillet',
-    description: 'Create a fillet (rounded corner) at a vertex in a sketch',
+    description: 'Create a fillet (rounded corner) at a sketch point',
     inputSchema: {
       type: 'object' as const,
       properties: {
         sketchName: { type: 'string', description: 'Name of the sketch' },
-        vertexIndex: { type: 'number', description: 'Index of the vertex to fillet' },
+        geoIndex: { type: 'number', description: 'Index of the geometry element whose point will be filleted' },
+        pointPos: { type: 'number', description: 'Point position: 1=start, 2=end (default 1)' },
         radius: { type: 'number', description: 'Fillet radius' },
       },
-      required: ['sketchName', 'vertexIndex', 'radius'],
+      required: ['sketchName', 'geoIndex', 'radius'],
     },
   },
   {
@@ -463,7 +464,7 @@ bspline = Part.BSplineCurve()
 bspline.interpolate(pts, PeriodicFlag=${closed ? 'True' : 'False'})
 idx = sketch.addGeometry(bspline)
 doc.recompute()
-_mcp_result["result"] = {"sketchName": sketch.Name, "geometryIndex": idx, "points": ${points.length}, "closed": ${closed}}
+_mcp_result["result"] = {"sketchName": sketch.Name, "geometryIndex": idx, "points": ${points.length}, "closed": ${closed ? 'True' : 'False'}}
 `);
     }
 
@@ -577,12 +578,13 @@ _mcp_result["result"] = {"sketchName": sketch.Name, "external": ${JSON.stringify
 
     case 'freecad_sketch_fillet': {
       const sketchName = args.sketchName as string;
-      const vertexIndex = args.vertexIndex as number;
+      const geoIndex = args.geoIndex as number;
+      const pointPos = (args.pointPos as number) ?? 1;
       const radius = args.radius as number;
       return bridge.run(`
 doc = FreeCAD.ActiveDocument
 sketch = doc.getObject(${JSON.stringify(sketchName)})
-idx = sketch.fillet(${vertexIndex}, ${radius})
+idx = sketch.fillet(${geoIndex}, ${pointPos}, ${radius})
 doc.recompute()
 _mcp_result["result"] = {"sketchName": sketch.Name, "filletIndex": idx, "radius": ${radius}}
 `);

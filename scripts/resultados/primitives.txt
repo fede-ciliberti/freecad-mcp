@@ -1,0 +1,11 @@
+[PASS] freecad_create_box
+[PASS] freecad_create_cylinder
+[PASS] freecad_create_sphere
+[PASS] freecad_create_cone
+[PASS] freecad_create_torus
+[PASS] freecad_create_wedge
+[PASS] freecad_create_helix
+[PASS] freecad_create_spiral
+[PASS] freecad_create_ellipsoid
+[PASS] freecad_create_tube
+[PASS] freecad_create_prism

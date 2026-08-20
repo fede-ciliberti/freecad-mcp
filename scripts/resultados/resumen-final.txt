@@ -1,0 +1,91 @@
+Resumen de validación contra FreeCAD 1.1.3 headless (AppImage)
+================================================================
+
+Módulo: mesh
+------------
+Total tools en MESH_TOOLS: 7
+Resultado: 7/7 PASS
+
+[PASS] freecad_mesh_from_shape
+[PASS] freecad_mesh_to_shape
+[PASS] freecad_mesh_repair
+[PASS] freecad_mesh_decimate
+[PASS] freecad_mesh_refine
+[PASS] freecad_mesh_info
+[PASS] freecad_mesh_boolean
+
+Nota: freecad_mesh_from_shape se ejecutó dos veces para generar los dos meshes
+necesarios para la prueba de boolean. Todas las tools del módulo pasaron.
+
+
+Módulo: techdraw
+----------------
+Total tools en TECHDRAW_TOOLS: 6
+Resultado: 5/6 PASS, 1/6 FAIL
+
+[PASS] freecad_techdraw_create_page
+[PASS] freecad_techdraw_add_view
+[PASS] freecad_techdraw_add_projection_group
+[PASS] freecad_techdraw_add_dimension
+[FAIL] freecad_techdraw_export_svg
+  Error exacto: FreeCAD error: module 'TechDraw' has no attribute 'writeSVGPage'
+[PASS] freecad_techdraw_export_dxf
+
+Nota sobre GUI: Ninguna tool de TechDraw falló por requerir GUI en esta corrida.
+El único fallo es un bug del handler que usa TechDraw.writeSVGPage, atributo que
+no existe en FreeCAD 1.1.3 headless. Los atributos disponibles relacionados con
+SVG en este build son: projectToSVG, viewPartAsSvg, exportSVGEdges, removeSvgTags.
+El validador prepara manualmente el template de página porque el handler de
+create_page no encuentra los templates del AppImage (usan prefijo Default_Template_).
+
+
+Módulo: advanced-operations
+---------------------------
+Total tools en ADVANCED_OPERATION_TOOLS: 11
+Resultado: 9/11 PASS, 2/11 FAIL
+
+[PASS] freecad_thickness
+[FAIL] freecad_offset_3d
+  Error exacto: FreeCAD error: no closed bounds
+[PASS] freecad_section
+[PASS] freecad_compound
+[PASS] freecad_linear_array
+[PASS] freecad_polar_array
+[PASS] freecad_scale_object
+[FAIL] freecad_extrude
+  Error exacto: FreeCAD error: name 'true' is not defined
+[PASS] freecad_get_center_of_mass
+[PASS] freecad_get_face_info  (con faceIndex)
+[PASS] freecad_get_face_info  (sin faceIndex)
+[PASS] freecad_get_edge_info  (con edgeIndex)
+[PASS] freecad_get_edge_info  (sin edgeIndex)
+
+Análisis de fallos (tool rota, no validación mal armada):
+- freecad_offset_3d: el handler invoca obj.Shape.makeOffsetShape(distance, 1e-3, fill=True).
+  El parámetro fill=True no es válido para sólidos en FreeCAD 1.1.3; la misma llamada
+  sin fill=True funciona correctamente. Es un bug del handler.
+- freecad_extrude: el handler genera ext.Solid = true (minúscula), que no es válido en
+  Python (debe ser True). Es un bug evidente del handler.
+
+
+Módulo: spreadsheet
+-------------------
+Total tools en SPREADSHEET_TOOLS: 5
+Resultado: 5/5 PASS
+
+[PASS] freecad_spreadsheet_create
+[PASS] freecad_spreadsheet_set
+[PASS] freecad_spreadsheet_alias
+[PASS] freecad_spreadsheet_get
+[PASS] freecad_set_expression
+
+
+Resumen global
+--------------
+Mesh:              7 PASS / 0 FAIL
+TechDraw:          5 PASS / 1 FAIL  (0 requieren GUI)
+Advanced-ops:      9 PASS / 2 FAIL
+Spreadsheet:       5 PASS / 0 FAIL
+Total tools únicas cubiertas: 29
+Total PASS: 26
+Total FAIL: 3

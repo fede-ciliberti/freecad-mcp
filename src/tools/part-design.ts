@@ -367,11 +367,11 @@ if sketch not in body.Group:
 pad = doc.addObject("PartDesign::Pad", ${JSON.stringify(padName)})
 pad.Profile = sketch
 pad.Length = ${length}
-pad.Symmetric = ${symmetric ? 'True' : 'False'}
+pad.Midplane = ${symmetric ? 'True' : 'False'}
 pad.Reversed = ${reversed ? 'True' : 'False'}
 body.addObject(pad)
 doc.recompute()
-_mcp_result["result"] = {"name": pad.Name, "length": pad.Length, "type": pad.TypeId}
+_mcp_result["result"] = {"name": pad.Name, "length": pad.Length.Value, "type": pad.TypeId}
 `);
     }
 
@@ -396,7 +396,7 @@ pocket.Profile = sketch
 pocket.Length = ${depth}
 body.addObject(pocket)
 doc.recompute()
-_mcp_result["result"] = {"name": pocket.Name, "depth": pocket.Length, "type": pocket.TypeId}
+_mcp_result["result"] = {"name": pocket.Name, "depth": pocket.Length.Value, "type": pocket.TypeId}
 `);
     }
 
@@ -425,7 +425,7 @@ rev.Angle = ${angle}
 rev.Axis = FreeCAD.Vector(${axisX}, ${axisY}, ${axisZ})
 body.addObject(rev)
 doc.recompute()
-_mcp_result["result"] = {"name": rev.Name, "angle": rev.Angle, "type": rev.TypeId}
+_mcp_result["result"] = {"name": rev.Name, "angle": rev.Angle.Value, "type": rev.TypeId}
 `);
     }
 
@@ -440,7 +440,7 @@ loft = doc.addObject("Part::Loft", ${JSON.stringify(loftName)})
 loft.Sections = ${sectionsCode}
 loft.Solid = ${solid ? 'True' : 'False'}
 doc.recompute()
-_mcp_result["result"] = {"name": loft.Name, "sections": ${JSON.stringify(sketchNames)}, "solid": ${solid}, "type": loft.TypeId}
+_mcp_result["result"] = {"name": loft.Name, "sections": ${JSON.stringify(sketchNames)}, "solid": ${solid ? 'True' : 'False'}, "type": loft.TypeId}
 `);
     }
 
@@ -476,7 +476,7 @@ fillet = doc.addObject("PartDesign::Fillet", ${JSON.stringify(filletName)})
 fillet.Base = (obj, edges)
 fillet.Radius = ${radius}
 doc.recompute()
-_mcp_result["result"] = {"name": fillet.Name, "radius": fillet.Radius, "edges": edges, "type": fillet.TypeId}
+_mcp_result["result"] = {"name": fillet.Name, "radius": fillet.Radius.Value, "edges": edges, "type": fillet.TypeId}
 `);
     }
 
@@ -496,7 +496,7 @@ cham = doc.addObject("PartDesign::Chamfer", ${JSON.stringify(chamferName)})
 cham.Base = (obj, edges)
 cham.Size = ${size}
 doc.recompute()
-_mcp_result["result"] = {"name": cham.Name, "size": cham.Size, "edges": edges, "type": cham.TypeId}
+_mcp_result["result"] = {"name": cham.Name, "size": cham.Size.Value, "edges": edges, "type": cham.TypeId}
 `);
     }
 
@@ -523,14 +523,19 @@ if body is None:
     body = doc.addObject("PartDesign::Body", "Body")
 if sketch not in body.Group:
     body.addObject(sketch)
-hole = doc.addObject("PartDesign::Hole", ${JSON.stringify(holeName)})
+# Attach the sketch to the tip face so the Hole has a valid base/support
+tip = body.Tip
+if tip is not None and sketch.MapMode == "Deactivated":
+    sketch.MapMode = "FlatFace"
+    sketch.AttachmentSupport = (tip, ["Face6"])
+    doc.recompute()
+hole = body.newObject("PartDesign::Hole", ${JSON.stringify(holeName)})
 hole.Profile = sketch
 hole.Diameter = ${diameter}
 ${throughAll ? 'hole.DepthType = "ThroughAll"' : `hole.DepthType = "Dimension"\nhole.Depth = ${depth}`}
 ${holeType === 'counterbore' && counterboreDiameter !== undefined ? `hole.HoleType = "Counterbore"\nhole.HoleCutDiameter = ${counterboreDiameter}\nhole.HoleCutDepth = ${counterboreDepth ?? 3}` : ''}
 ${holeType === 'countersink' ? `hole.HoleType = "Countersink"\nhole.HoleCutCountersinkAngle = ${countersinkAngle}` : ''}
 ${threaded ? 'hole.Threaded = True' : ''}
-body.addObject(hole)
 doc.recompute()
 _mcp_result["result"] = {"name": hole.Name, "diameter": ${diameter}, "depth": ${depth}, "type": ${JSON.stringify(holeType)}}
 `);

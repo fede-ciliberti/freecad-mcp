@@ -1,0 +1,22 @@
+Assembly validation results (2026-08-20T13:32:22.221Z)
+Total: 10
+PASS: 3
+FAIL: 7
+
+PASS freecad_assembly_create
+PASS freecad_assembly_insert_component
+[API-ROTA] freecad_assembly_toggle_grounded
+  FreeCAD error: Document::addObject: 'Assembly::JointFixed' is not a document object type
+[API-ROTA] freecad_assembly_fixed_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointFixed' is not a document object type
+[API-ROTA] freecad_assembly_revolute_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointRevolute' is not a document object type
+[API-ROTA] freecad_assembly_slider_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointSlider' is not a document object type
+[API-ROTA] freecad_assembly_cylindrical_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointCylindrical' is not a document object type
+[API-ROTA] freecad_assembly_ball_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointBall' is not a document object type
+[API-ROTA] freecad_assembly_distance_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointDistance' is not a document object type
+PASS freecad_assembly_solve

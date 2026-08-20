@@ -1,0 +1,5 @@
+[PASS] freecad_spreadsheet_create
+[PASS] freecad_spreadsheet_set
+[PASS] freecad_spreadsheet_alias
+[PASS] freecad_spreadsheet_get
+[PASS] freecad_set_expression

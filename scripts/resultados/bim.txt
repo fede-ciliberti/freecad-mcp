@@ -1,0 +1,17 @@
+BIM validation results (2026-08-20T13:55:48.383Z)
+Total: 9
+PASS: 7
+FAIL: 2
+
+[API-ROTA] freecad_arch_wall
+  FreeCAD error: FreeCAD execution timed out after 30000ms
+PASS freecad_arch_structure
+PASS freecad_arch_window
+PASS freecad_arch_floor
+PASS freecad_arch_building
+PASS freecad_arch_site
+PASS freecad_arch_roof
+PASS freecad_arch_stairs
+[API-ROTA] freecad_export_ifc
+  FreeCAD err
+Resumen guardado en /home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/bim.txt

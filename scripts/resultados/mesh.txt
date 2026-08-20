@@ -1,0 +1,8 @@
+[PASS] freecad_mesh_from_shape
+[PASS] freecad_mesh_from_shape
+[PASS] freecad_mesh_to_shape
+[PASS] freecad_mesh_repair
+[PASS] freecad_mesh_decimate
+[PASS] freecad_mesh_refine
+[PASS] freecad_mesh_info
+[PASS] freecad_mesh_boolean

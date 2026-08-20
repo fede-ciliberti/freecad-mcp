@@ -1,0 +1,22 @@
+[PASS] freecad_pad
+[PASS] freecad_pocket
+[PASS] freecad_revolve
+[PASS] freecad_loft
+[PASS] freecad_sweep
+[PASS] freecad_partdesign_fillet
+[PASS] freecad_partdesign_chamfer
+[PASS] freecad_hole
+[PASS] freecad_partdesign_thickness
+[PASS] freecad_linear_pattern
+[PASS] freecad_polar_pattern
+[PASS] freecad_partdesign_mirrored
+[PASS] freecad_additive_helix
+[PASS] freecad_subtractive_helix
+[PASS] freecad_additive_pipe
+[PASS] freecad_subtractive_pipe
+[PASS] freecad_groove
+[PASS] freecad_draft_angle
+[PASS] freecad_multi_transform
+[PASS] freecad_shape_binder
+
+Resultados guardados en scripts/resultados/part-design.txt

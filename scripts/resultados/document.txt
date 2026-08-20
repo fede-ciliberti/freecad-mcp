@@ -1,0 +1,6 @@
+[PASS] freecad_new_document
+[PASS] freecad_list_objects
+[PASS] freecad_get_object_info
+[PASS] freecad_save_document
+[PASS] freecad_close_document
+[PASS] freecad_open_document

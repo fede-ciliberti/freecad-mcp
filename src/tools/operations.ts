@@ -251,8 +251,8 @@ if o1 is None:
 if o2 is None:
     raise ValueError("Object not found: ${obj2}")
 fuse = doc.addObject("Part::Fuse", ${JSON.stringify(fuseName)})
-fuse.Shape1 = o1
-fuse.Shape2 = o2
+fuse.Base = o1
+fuse.Tool = o2
 doc.recompute()
 _mcp_result["result"] = {"name": fuse.Name, "volume": fuse.Shape.Volume}
 `);
@@ -291,8 +291,8 @@ if o1 is None:
 if o2 is None:
     raise ValueError("Object not found: ${obj2}")
 common = doc.addObject("Part::Common", ${JSON.stringify(intName)})
-common.Shape1 = o1
-common.Shape2 = o2
+common.Base = o1
+common.Tool = o2
 doc.recompute()
 _mcp_result["result"] = {"name": common.Name, "volume": common.Shape.Volume}
 `);
@@ -527,9 +527,15 @@ _mcp_result["result"] = {"name": xor.Name, "volume": xor.Shape.Volume}
       const joinName = (args.name as string) || 'JoinConnect';
       return bridge.run(`
 doc = FreeCAD.ActiveDocument
-j = doc.addObject("Part::JoinConnect", ${JSON.stringify(joinName)})
-j.Object1 = doc.getObject(${JSON.stringify(obj1)})
-j.Object2 = doc.getObject(${JSON.stringify(obj2)})
+import BOPTools.JoinFeatures
+o1 = doc.getObject(${JSON.stringify(obj1)})
+o2 = doc.getObject(${JSON.stringify(obj2)})
+if o1 is None:
+    raise ValueError("Object not found: ${obj1}")
+if o2 is None:
+    raise ValueError("Object not found: ${obj2}")
+j = BOPTools.JoinFeatures.makeConnect(${JSON.stringify(joinName)})
+j.Objects = [o1, o2]
 doc.recompute()
 _mcp_result["result"] = {"name": j.Name, "volume": j.Shape.Volume}
 `);
@@ -541,9 +547,16 @@ _mcp_result["result"] = {"name": j.Name, "volume": j.Shape.Volume}
       const joinName = (args.name as string) || 'JoinCutout';
       return bridge.run(`
 doc = FreeCAD.ActiveDocument
-j = doc.addObject("Part::JoinCutout", ${JSON.stringify(joinName)})
-j.Object1 = doc.getObject(${JSON.stringify(obj1)})
-j.Object2 = doc.getObject(${JSON.stringify(obj2)})
+import BOPTools.JoinFeatures
+base = doc.getObject(${JSON.stringify(obj1)})
+tool = doc.getObject(${JSON.stringify(obj2)})
+if base is None:
+    raise ValueError("Object not found: ${obj1}")
+if tool is None:
+    raise ValueError("Object not found: ${obj2}")
+j = BOPTools.JoinFeatures.makeCutout(${JSON.stringify(joinName)})
+j.Base = base
+j.Tool = tool
 doc.recompute()
 _mcp_result["result"] = {"name": j.Name, "volume": j.Shape.Volume}
 `);

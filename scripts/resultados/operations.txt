@@ -1,0 +1,19 @@
+[PASS] freecad_boolean_fuse
+[PASS] freecad_boolean_cut
+[PASS] freecad_boolean_intersect
+[PASS] freecad_fillet
+[PASS] freecad_chamfer
+[PASS] freecad_move_object
+[PASS] freecad_rotate_object
+[PASS] freecad_copy_object
+[PASS] freecad_delete_object
+[PASS] freecad_mirror_object
+[PASS] freecad_check_geometry
+[PASS] freecad_refine_shape
+[PASS] freecad_boolean_fragments
+[PASS] freecad_slice
+[PASS] freecad_boolean_xor
+[PASS] freecad_join_connect
+[PASS] freecad_join_cutout
+
+Resumen guardado en /home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/operations.txt

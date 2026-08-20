@@ -1,0 +1,8 @@
+[PASS] freecad_techdraw_create_page
+[PASS] freecad_techdraw_add_view
+[PASS] freecad_techdraw_add_projection_group
+[PASS] freecad_techdraw_add_dimension
+[PASS] freecad_techdraw_export_svg
+[PASS] freecad_techdraw_export_dxf
+
+--- Resumen guardado en scripts/resultados/techdraw.txt ---

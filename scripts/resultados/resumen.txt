@@ -1,0 +1,107 @@
+Resumen de validación FreeCAD 1.1.3 headless (AppImage)
+Fecha: 2026-08-20
+Entorno: /home/fciliberti/Trabajos/Tools/freecad-bin/squashfs-root/usr/bin/freecadcmd
+Modo: headless forzado (useSocket=false)
+
+Categorías de falla:
+  [PASS]          Tool ejecutó correctamente.
+  [API-ROTA]      El handler usa una API de FreeCAD que cambió o no existe en 1.1.3.
+  [requiereMóduloExterno] Falta un módulo Python disponible en la versión objetivo.
+  [requiereBinarioExterno/entorno] Requiere un binario externo no presente o entorno no disponible.
+  [validación]    Error en los argumentos o setup de la validación.
+
+================================================================================
+BIM
+================================================================================
+Total: 9  |  PASS: 7  |  FAIL: 2
+
+PASS freecad_arch_wall
+PASS freecad_arch_structure
+PASS freecad_arch_window
+PASS freecad_arch_floor
+PASS freecad_arch_building
+PASS freecad_arch_site
+PASS freecad_arch_roof
+[API-ROTA] freecad_arch_stairs
+  FreeCAD error: Type must be App.DocumentObject or None, not int
+  → El handler llama Arch.makeStairs(${numberOfSteps}) pasando un entero como
+    primer argumento posicional. En FreeCAD 1.1.3 la firma es
+    makeStairs(baseobj=None, length=None, width=None, height=None, steps=None, name=None),
+    por lo que el entero se interpreta como baseobj y falla.
+[requiereMóduloExterno] freecad_export_ifc
+  FreeCAD error: No module named 'importIFC'
+  → FreeCAD 1.1.3 usa nativeifc / ifcopenshell; el módulo importIFC no existe.
+
+================================================================================
+FEM
+================================================================================
+Total: 8  |  PASS: 6  |  FAIL: 2
+
+PASS freecad_fem_analysis
+PASS freecad_fem_material
+PASS freecad_fem_constraint_fixed
+PASS freecad_fem_constraint_force
+PASS freecad_fem_constraint_pressure
+[API-ROTA] freecad_fem_mesh
+  FreeCAD error: 'FeaturePython' object has no attribute 'Part'
+  → En 1.1.3 el objeto Gmsh no tiene propiedad Part; debe usarse Shape.
+  → Además GmshTools.create_mesh() provoca SIGSEGV en este AppImage headless.
+[API-ROTA] freecad_fem_solver
+  FreeCAD error: module 'ObjectsFem' has no attribute 'makeSolverCalculixCcxTools'
+  → El handler usa makeSolverCalculixCcxTools (x minúscula). El nombre correcto
+    en 1.1.3 es ObjectsFem.makeSolverCalculiXCcxTools (C mayúscula).
+PASS freecad_fem_results
+
+================================================================================
+Surface
+================================================================================
+Total: 5  |  PASS: 3  |  FAIL: 2
+
+[API-ROTA] freecad_surface_filling
+  FreeCAD error: 'Part.Feature' object has no attribute 'BoundEdges'
+  → En 1.1.3 Surface::Filling usa la propiedad BoundaryEdges, no BoundEdges.
+[API-ROTA] freecad_surface_geomfill
+  FreeCAD error: 'Part.Feature' object has no attribute 'BoundEdges'
+  → En 1.1.3 Surface::GeomFillSurface usa la propiedad BoundaryList, no BoundEdges.
+PASS freecad_surface_sections
+PASS freecad_surface_extend
+PASS freecad_surface_ruled
+
+================================================================================
+Assembly
+================================================================================
+Total: 10  |  PASS: 3  |  FAIL: 7
+
+PASS freecad_assembly_create
+PASS freecad_assembly_insert_component
+[API-ROTA] freecad_assembly_toggle_grounded
+  FreeCAD error: Document::addObject: 'Assembly::JointFixed' is not a document object type
+[API-ROTA] freecad_assembly_fixed_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointFixed' is not a document object type
+[API-ROTA] freecad_assembly_revolute_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointRevolute' is not a document object type
+[API-ROTA] freecad_assembly_slider_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointSlider' is not a document object type
+[API-ROTA] freecad_assembly_cylindrical_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointCylindrical' is not a document object type
+[API-ROTA] freecad_assembly_ball_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointBall' is not a document object type
+[API-ROTA] freecad_assembly_distance_joint
+  FreeCAD error: Document::addObject: 'Assembly::JointDistance' is not a document object type
+  → En FreeCAD 1.1.3 el workbench Assembly nuevo no expone tipos de documento
+    Assembly::Joint*. Los joints se crean mediante comandos del workbench (GUI)
+    o una API interna no disponible en headless.
+PASS freecad_assembly_solve
+
+================================================================================
+Totales generales
+================================================================================
+Tools evaluadas: 32
+PASS: 19
+FAIL: 13
+
+Distribución de fallas:
+  [API-ROTA]: 11
+  [requiereMóduloExterno]: 1
+  [requiereBinarioExterno/entorno]: 0
+  [validación]: 0

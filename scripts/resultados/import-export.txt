@@ -1,0 +1,19 @@
+[PASS] freecad_execute_python
+[PASS] freecad_export_step
+[PASS] freecad_export_stl
+[PASS] freecad_import_step
+[PASS] freecad_import_stl
+[PASS] freecad_export_obj
+[PASS] freecad_export_iges
+[FAIL] freecad_import_iges — Cannot load Gui module in console application.
+[PASS] freecad_export_brep
+[PASS] freecad_export_dxf
+[PASS] freecad_import_dxf
+[PASS] freecad_export_svg
+[PASS] freecad_import_svg
+[PASS] freecad_measure_distance
+[PASS] freecad_measure_angle
+[PASS] freecad_get_volume
+[PASS] freecad_get_bounding_box
+
+Resultados guardados en scripts/resultados/import-export.txt

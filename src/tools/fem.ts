@@ -292,7 +292,7 @@ obj = doc.getObject(${JSON.stringify(objectName)})
 if obj is None:
     raise ValueError("Object not found: ${objectName}")
 mesh = ObjectsFem.makeMeshGmsh(doc, ${JSON.stringify(meshName)})
-mesh.Part = obj
+mesh.Shape = obj
 ${maxSize > 0 ? `mesh.CharacteristicLengthMax = ${maxSize}` : ''}
 ${minSize > 0 ? `mesh.CharacteristicLengthMin = ${minSize}` : ''}
 mesh.ElementOrder = ${JSON.stringify(meshOrder === 1 ? '1st' : '2nd')}
@@ -327,7 +327,7 @@ analysis = doc.getObject(${JSON.stringify(analysisName)})
 if analysis is None:
     raise ValueError("Analysis not found: ${analysisName}")
 ${solver === 'calculix'
-  ? `solver = ObjectsFem.makeSolverCalculixCcxTools(doc, ${JSON.stringify(solverName)})`
+  ? `solver = ObjectsFem.makeSolverCalculiXCcxTools(doc, ${JSON.stringify(solverName)})`
   : `solver = ObjectsFem.makeSolverElmer(doc, ${JSON.stringify(solverName)})`}
 solver.AnalysisType = ${JSON.stringify(analysisType)}
 analysis.addObject(solver)

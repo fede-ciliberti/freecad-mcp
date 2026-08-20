@@ -1,0 +1,18 @@
+[PASS] freecad_create_sketch
+[PASS] freecad_add_sketch_line
+[PASS] freecad_add_sketch_circle
+[PASS] freecad_add_sketch_arc
+[PASS] freecad_add_sketch_rectangle
+[PASS] freecad_add_sketch_constraint
+[PASS] freecad_add_sketch_ellipse
+[PASS] freecad_add_sketch_bspline
+[PASS] freecad_add_sketch_polygon
+[PASS] freecad_add_sketch_slot
+[PASS] freecad_add_sketch_point
+[PASS] freecad_add_sketch_external
+[PASS] freecad_sketch_fillet
+[PASS] freecad_sketch_trim
+[PASS] freecad_sketch_toggle_construction
+[PASS] freecad_close_sketch
+
+Resumen guardado en /home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/sketcher.txt

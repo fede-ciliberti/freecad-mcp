@@ -270,7 +270,12 @@ page = doc.getObject(${JSON.stringify(pageName)})
 if page is None:
     raise ValueError("Page not found: ${pageName}")
 doc.recompute()
-TechDraw.writeSVGPage(page, ${JSON.stringify(filePath)})
+views = [v for v in page.Views if v.TypeId.startswith("TechDraw::DrawView")]
+if not views:
+    raise ValueError("Page has no exportable views")
+svg = TechDraw.viewPartAsSvg(views[0])
+with open(${JSON.stringify(filePath)}, "w") as f:
+    f.write(svg)
 import os
 _mcp_result["result"] = {"page": page.Name, "filePath": ${JSON.stringify(filePath)}, "size_bytes": os.path.getsize(${JSON.stringify(filePath)})}
 `);
