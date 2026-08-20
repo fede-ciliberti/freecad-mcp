@@ -27,6 +27,22 @@ _result_events = {}
 _server_running = False
 
 
+def make_serializable(obj, seen=None):
+    if seen is None:
+        seen = set()
+    id_ = id(obj)
+    if id_ in seen:
+        return None
+    seen.add(id_)
+    if hasattr(obj, 'Value') and hasattr(obj, 'Unit'):
+        return obj.Value
+    if isinstance(obj, dict):
+        return {k: make_serializable(v, seen) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [make_serializable(item, seen) for item in obj]
+    return obj
+
+
 def _handle_client(conn):
     try:
         data = b''
@@ -51,7 +67,10 @@ def _handle_client(conn):
         result = _result_dict.pop(req_id, {"success": False, "error": "Timeout"})
         _result_events.pop(req_id, None)
 
-        response = json.dumps(result).encode('utf-8')
+        try:
+            response = json.dumps(result).encode('utf-8')
+        except Exception as e:
+            response = json.dumps({"success": False, "error": "JSON serialization error: " + str(e)}).encode('utf-8')
         conn.sendall(response)
     except Exception as e:
         try:
@@ -103,6 +122,7 @@ def _process_queue():
             except Exception as e:
                 _mcp_result = {"success": False, "error": str(e)}
 
+            _mcp_result = make_serializable(_mcp_result)
             _result_dict[req_id] = _mcp_result
             _result_events[req_id].set()
         except queue.Empty:

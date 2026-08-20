@@ -115,6 +115,21 @@ import Part
 
 MARKER = "${RESULT_MARKER}"
 
+def make_serializable(obj, seen=None):
+    if seen is None:
+        seen = set()
+    id_ = id(obj)
+    if id_ in seen:
+        return None
+    seen.add(id_)
+    if hasattr(obj, 'Value') and hasattr(obj, 'Unit'):
+        return obj.Value
+    if isinstance(obj, dict):
+        return {k: make_serializable(v, seen) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [make_serializable(item, seen) for item in obj]
+    return obj
+
 print("__MCP_READY__", flush=True)
 
 while True:
@@ -141,8 +156,15 @@ while True:
         except Exception as e:
             _mcp_result = {"success": False, "error": str(e)}
 
+        _mcp_result = make_serializable(_mcp_result)
+
+        try:
+            json_str = json.dumps(_mcp_result)
+        except Exception as e:
+            json_str = json.dumps({"success": False, "error": "JSON serialization error: " + str(e)})
+
         print(MARKER, flush=True)
-        print(json.dumps(_mcp_result), flush=True)
+        print(json_str, flush=True)
         print(MARKER + "END", flush=True)
     except Exception as e:
         print(MARKER, flush=True)

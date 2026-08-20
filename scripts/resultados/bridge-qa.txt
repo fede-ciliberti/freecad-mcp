@@ -1,0 +1,15 @@
+=== Starting FreeCAD Bridge Serialization QA ===
+FREECAD_CMD: /home/fciliberti/Trabajos/Tools/freecad-bin/squashfs-root/usr/bin/freecadcmd
+
+--- Test (b): FreeCAD.Units.Quantity conversion ---
+Executing code: _mcp_result["result"] = {"len": FreeCAD.Units.Quantity("10 mm")}
+Result (b): {"success":true,"result":{"len":10},"output":""}
+Test (b) PASS: true
+
+--- Test (c): Non-serializable object error handling ---
+Executing code: class X: pass
+_mcp_result["result"] = {"x": X()}
+Result (c): {"success":false,"error":"JSON serialization error: Object of type X is not JSON serializable","output":""}
+Test (c) PASS: true
+
+=== OVERALL QA RESULT: PASS ===
