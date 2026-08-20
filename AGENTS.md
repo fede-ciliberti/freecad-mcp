@@ -38,3 +38,21 @@ Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico 
 ## Registro de Gaps y Evidencias
 
 - **Obligatoriedad**: Todo gap, limitación estructural o comportamiento inesperado del MCP identificado durante el uso o pruebas debe ser registrado en `docs/MCP_EVIDENCIAS_Y_MEJORAS.md` (siempre que no se encuentre previamente documentado), manteniendo un registro vivo para futuros planes de mejora.
+
+## Estándar de modelado CAD
+
+- **Obligatorio**: Toda creación de partes paramétricas para impresión 3D debe seguir `docs/GUIA_BUENAS_PRACTICAS_CAD.md` (lineamiento maestro). Flujo canónico: hoja `Parametros` → sketch fully constrained → pad → pocket/hole sobre cara → fillet/chamfer sobre el Tip → validación numérica → export STL.
+- **Anti-patrones críticos**: no mezclar wrappers MCP con `execute_python` en la misma sesión (corrompe el feature tree); no usar sketches movidos para cortes (rompe el vínculo topológico); no redondear/chamferear sobre features tempranas (pierde cortes posteriores); validar por métricas (BoundBox + volumen), nunca por captura de viewport.
+
+## Metodología CAD y Skills Disponibles
+
+- **Doc Maestro de Metodología**: Toda arquitectura y flujo avanzado debe regirse por `docs/METODOLOGIA_CAD_FREECAD.md` (integrando estándares de ingeniería y buenas prácticas de FreeCAD).
+- **Instrucción al Agente**: Cargar la skill correspondiente al dominio de trabajo antes de comenzar el modelado.
+- **Skills del Ecosistema FreeCAD**:
+  - `freecad-parametric-part`: Creación de piezas paramétricas base y flujos elementales.
+  - `freecad-assembly`: Ensamble de componentes, restricciones cinemáticas y relaciones mecánicas.
+  - `freecad-gears`: Modelado de engranajes y transmisiones de potencia.
+  - `freecad-robotic-joints`: Diseño de articulaciones, pivotes y mecanismos robóticos.
+  - `freecad-stress-analysis`: Análisis de elementos finitos (FEM) y simulación de fuerzas/esfuerzos.
+  - `freecad-dfam`: Diseño para manufactura aditiva (DfAM) e impresión 3D optimizada.
+  - `freecad-tolerances`: Gestión de tolerancias geométricas y ajustes mecánicos.
