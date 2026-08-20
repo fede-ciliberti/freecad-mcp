@@ -6,6 +6,7 @@ import { handleImportExportTool } from '../../dist/tools/import-export.js';
 import { handleDocumentTool } from '../../dist/tools/document.js';
 import { handlePrimitiveTool } from '../../dist/tools/primitives.js';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 const bridge = createBridge();
 const R = (name, args) => runFull(bridge, handleImportExportTool, name, args);
@@ -238,7 +239,7 @@ const lines = results.map((r) => {
   return `[FAIL] ${r.name} — ${text}`;
 });
 writeFileSync(
-  '/home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/import-export.txt',
+  path.resolve('scripts/resultados/import-export.txt'),
   lines.join('\n') + '\n',
 );
 console.log('\nResultados guardados en scripts/resultados/import-export.txt');

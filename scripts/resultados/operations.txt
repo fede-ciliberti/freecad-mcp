@@ -15,5 +15,3 @@
 [PASS] freecad_boolean_xor
 [PASS] freecad_join_connect
 [PASS] freecad_join_cutout
-
-Resumen guardado en /home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/operations.txt

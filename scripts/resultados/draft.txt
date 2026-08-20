@@ -15,5 +15,3 @@
 [PASS] freecad_draft_dimension
 [PASS] freecad_draft_shape2dview
 [PASS] freecad_draft_facebinder
-
-Resultados guardados en scripts/resultados/draft.txt

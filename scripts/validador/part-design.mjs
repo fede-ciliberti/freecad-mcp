@@ -291,13 +291,14 @@ const fail = results.filter((r) => !r.ok).length;
 console.log(`PASS: ${pass} / FAIL: ${fail} / TOTAL: ${results.length}`);
 
 import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 const lines = results.map((r) => {
   if (r.ok) return `[PASS] ${r.name}`;
   const text = r.text.replace(/^FreeCAD error:\s*/, '').slice(0, 300);
   return `[FAIL] ${r.name} — ${text}`;
 });
 writeFileSync(
-  '/home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/part-design.txt',
+  path.resolve('scripts/resultados/part-design.txt'),
   lines.join('\n') + '\n',
 );
 console.log('\nResultados guardados en scripts/resultados/part-design.txt');

@@ -8,6 +8,7 @@ import { handleDraftTool } from '../../dist/tools/draft.js';
 import { handleDocumentTool } from '../../dist/tools/document.js';
 import { handlePrimitiveTool } from '../../dist/tools/primitives.js';
 import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 const bridge = createBridge();
 const R = (name, args) => runFull(bridge, handleDraftTool, name, args);
@@ -228,7 +229,7 @@ const lines = results.map((r) => {
   return `[FAIL] ${r.name} — ${text}`;
 });
 writeFileSync(
-  '/home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/draft.txt',
+  path.resolve('scripts/resultados/draft.txt'),
   lines.join('\n') + '\n',
 );
 console.log('\nResultados guardados en scripts/resultados/draft.txt');

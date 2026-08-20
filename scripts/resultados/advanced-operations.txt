@@ -11,5 +11,3 @@
 [PASS] freecad_get_face_info
 [PASS] freecad_get_edge_info
 [PASS] freecad_get_edge_info
-
---- Resumen guardado en scripts/resultados/advanced-operations.txt ---

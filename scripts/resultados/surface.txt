@@ -1,9 +1,10 @@
-Surface validation results (2026-08-20T13:53:59.259Z)
+Surface validation results (2026-08-20T16:08:33.853Z)
 Total: 5
 PASS: 5
 FAIL: 0
 
 PASS freecad_surface_filling
 PASS freecad_surface_geomfill
-PASS freecad_su
-Resumen guardado en /home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/surface.txt
+PASS freecad_surface_sections
+PASS freecad_surface_extend
+PASS freecad_surface_ruled

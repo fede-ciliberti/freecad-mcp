@@ -14,5 +14,3 @@
 [PASS] freecad_sketch_trim
 [PASS] freecad_sketch_toggle_construction
 [PASS] freecad_close_sketch
-
-Resumen guardado en /home/fciliberti/Trabajos/Tools/freecad-mcp/scripts/resultados/sketcher.txt

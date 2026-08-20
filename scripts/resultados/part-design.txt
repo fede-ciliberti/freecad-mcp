@@ -18,5 +18,3 @@
 [PASS] freecad_draft_angle
 [PASS] freecad_multi_transform
 [PASS] freecad_shape_binder
-
-Resultados guardados en scripts/resultados/part-design.txt

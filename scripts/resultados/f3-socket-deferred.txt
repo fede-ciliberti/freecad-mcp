@@ -1,0 +1,8 @@
+DEFERRAL NOTE - Socket Mode QA (127.0.0.1:12345)
+Date: 2026-08-20
+Status: Deferred
+
+Reason: No active FreeCAD GUI process listening on 127.0.0.1:12345 was detected (`ss -tlnp | grep 12345` returned empty).
+The FreeCAD MCP socket mode requires a running FreeCAD GUI instance with the socket macro listener active.
+Full suite validation was successfully executed in headless mode (`FREECAD_CMD=/home/fciliberti/Trabajos/Tools/freecad-bin/squashfs-root/usr/bin/freecadcmd`), passing 168/169 tests (1 documented GUI-only failure).
+Socket mode validation for Quantity serialization and interactive tools is deferred until FreeCAD GUI is running with the macro enabled.

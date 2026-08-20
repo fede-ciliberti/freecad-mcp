@@ -5,7 +5,7 @@
 [PASS] freecad_import_stl
 [PASS] freecad_export_obj
 [PASS] freecad_export_iges
-[FAIL] freecad_import_iges — Cannot load Gui module in console application.
+[FAIL] freecad_import_iges — import_iges requires FreeCAD GUI (ImportGui). Use GUI mode.
 [PASS] freecad_export_brep
 [PASS] freecad_export_dxf
 [PASS] freecad_import_dxf
@@ -15,5 +15,3 @@
 [PASS] freecad_measure_angle
 [PASS] freecad_get_volume
 [PASS] freecad_get_bounding_box
-
-Resultados guardados en scripts/resultados/import-export.txt

@@ -4,5 +4,3 @@
 [PASS] freecad_techdraw_add_dimension
 [PASS] freecad_techdraw_export_svg
 [PASS] freecad_techdraw_export_dxf
-
---- Resumen guardado en scripts/resultados/techdraw.txt ---
