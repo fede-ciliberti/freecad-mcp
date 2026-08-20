@@ -154,7 +154,31 @@ export const ASSEMBLY_TOOLS = [
   },
 ];
 
-// Helper to create joint Python code
+const JOINT_TYPE_INDEX: Record<string, number> = {
+  fixed: 0,
+  revolute: 1,
+  cylindrical: 2,
+  slider: 3,
+  ball: 4,
+  distance: 5,
+};
+
+const JOINTGROUP_HELPER = `
+jointgroup = None
+for child in assembly.Group:
+    if child.TypeId == "Assembly::JointGroup":
+        jointgroup = child
+        break
+if jointgroup is None:
+    jointgroup = assembly.newObject("Assembly::JointGroup", "Joints")
+`;
+
+// FreeCAD expects references as [obj, [element, vertex]]. The validator only
+// supplies one element, so we repeat it as the vertex (valid for Face/Edge/Vertex).
+function makeRefPair(componentName: string, element: string): string {
+  return `[${componentName}, [${JSON.stringify(element)}, ${JSON.stringify(element)}]]`;
+}
+
 function makeJointCode(
   jointType: string,
   assemblyName: string,
@@ -165,25 +189,31 @@ function makeJointCode(
   jointName: string,
   extraProps: string = '',
 ): string {
+  const typeIndex = JOINT_TYPE_INDEX[jointType.toLowerCase()];
+  if (typeIndex === undefined) {
+    throw new Error(`Unsupported joint type: ${jointType}`);
+  }
   return `
 ${DOC_PREAMBLE}
+import JointObject
 assembly = doc.getObject(${JSON.stringify(assemblyName)})
 if assembly is None:
     raise ValueError("Assembly not found: ${assemblyName}")
+${JOINTGROUP_HELPER}
 c1 = doc.getObject(${JSON.stringify(comp1)})
 c2 = doc.getObject(${JSON.stringify(comp2)})
 if c1 is None:
     raise ValueError("Component not found: ${comp1}")
 if c2 is None:
     raise ValueError("Component not found: ${comp2}")
-joint = doc.addObject("Assembly::Joint${jointType}", ${JSON.stringify(jointName)})
-joint.ObjectToGround = c1
-joint.Part1 = c1
-joint.Element1 = ${JSON.stringify(elem1)}
-joint.Part2 = c2
-joint.Element2 = ${JSON.stringify(elem2)}
+joint = jointgroup.newObject("App::FeaturePython", ${JSON.stringify(jointName)})
+JointObject.Joint(joint, ${typeIndex})
+refs = [
+    ${makeRefPair('c1', elem1)},
+    ${makeRefPair('c2', elem2)},
+]
+joint.Proxy.setJointConnectors(joint, refs)
 ${extraProps}
-assembly.addObject(joint)
 doc.recompute()
 _mcp_result["result"] = {"name": joint.Name, "type": "${jointType}", "component1": ${JSON.stringify(comp1)}, "component2": ${JSON.stringify(comp2)}}
 `;
@@ -233,16 +263,16 @@ _mcp_result["result"] = {"name": link.Name, "linkedTo": obj.Name, "position": {"
       const componentName = args.componentName as string;
       return bridge.run(`
 ${DOC_PREAMBLE}
+import JointObject
 assembly = doc.getObject(${JSON.stringify(assemblyName)})
 if assembly is None:
     raise ValueError("Assembly not found: ${assemblyName}")
+${JOINTGROUP_HELPER}
 comp = doc.getObject(${JSON.stringify(componentName)})
 if comp is None:
     raise ValueError("Component not found: ${componentName}")
-# Create a grounded joint
-grounded = doc.addObject("Assembly::JointFixed", "Grounded_" + comp.Name)
-grounded.ObjectToGround = comp
-assembly.addObject(grounded)
+grounded = jointgroup.newObject("App::FeaturePython", "Grounded_" + comp.Name)
+JointObject.GroundedJoint(grounded, comp)
 doc.recompute()
 _mcp_result["result"] = {"name": grounded.Name, "component": comp.Name, "grounded": True}
 `);
