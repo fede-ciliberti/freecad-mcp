@@ -1,10 +1,11 @@
 # AGENTS.md
 
-Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico con FreeCAD. ~165 tools repartidas en 15 módulos.
+Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico con FreeCAD. 169 tools repartidas en 15 módulos. Target FreeCAD 1.1.3+ (1.0 mínimo).
 
 ## Comandos
 
-- `npm run build` — `tsc` (compila `src/` → `dist/`). Es el único paso de verificación; **no hay suite de tests** (`npm test` no existe).
+- `npm run build` — `tsc` (compila `src/` → `dist/`).
+- `npm test` — ejecuta la suite de validación (`node scripts/test-runner.mjs`).
 - `npm run dev` — `tsc && node dist/index.js`.
 - `npm start` — corre `dist/index.js`.
 - No hay linter ni formatter configurado.
@@ -20,8 +21,9 @@ Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico 
 
 ## Gotchas
 
-- **El path default de `freecadcmd` es macOS**: `/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd`. En Linux, sin `FREECAD_CMD` seteado, el modo headless falla. Para probar/desarrollar en Linux setear `FREECAD_CMD=/path/to/freecadcmd`.
+- **Path default de `freecadcmd` y soporte AppImage**: El default es macOS (`/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd`). El bridge deriva `freecadApp` de `dirname(dirname(cmd))`, cubriendo macOS app bundles y AppImages de Linux. En Linux, configurar `FREECAD_CMD` apuntando al binario dentro del AppImage extraído (ej. `/path/to/squashfs-root/usr/bin/freecadcmd`).
 - **GUI mode requiere el macro antes**: `freecad_server.FCMacro` debe estar ejecutándose en FreeCAD GUI antes de que el server se conecte. El puerto socket `12345` está hardcodeado en `freecad-bridge.ts` y en el macro.
+- **Tools GUI-only**: Algunas tools como `freecad_import_iges` requieren la GUI de FreeCAD (ImportGui). En modo headless devuelven un error claro indicando que se requiere GUI mode.
 - **Seguridad de strings en Python — crítico**: nunca interpolar strings de usuario directamente en el código Python. Usar `JSON.stringify()` (como en `document.ts`) o `escapePythonString`/`escapeString` antes de embeber. `freecad_execute_python` ejecuta código arbitrario por diseño — tool peligrosa, solo entornos confiables.
 - **Validación de paths**: todo `filePath` debe pasar por `validateFilePath()` (bloquea path traversal y paths de sistema `/etc/`, `/proc/`, etc.). Imports/exports requieren paths absolutos.
 - **Toda tool nueva debe tener validación runtime** para todos sus parámetros numéricos/strings (rango, sanitización).

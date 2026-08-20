@@ -1,11 +1,11 @@
 # freecad-mcp
 
-MCP (Model Context Protocol) server for FreeCAD parametric 3D CAD modeling. Provides 165 tools across 15 modules for document management, primitives, booleans, sketching, part design, meshing, FEM, BIM, and more.
+MCP (Model Context Protocol) server for FreeCAD parametric 3D CAD modeling. Provides 169 tools across 15 modules for document management, primitives, booleans, sketching, part design, meshing, FEM, BIM, and more. Target FreeCAD 1.1.3+ (1.0 minimum).
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 18
-- [FreeCAD](https://www.freecad.org/) 0.21 or later installed
+- [FreeCAD](https://www.freecad.org/) 1.1.3 or later (1.0 minimum) installed
 
 ## Installation
 
@@ -63,7 +63,7 @@ claude mcp add freecad node /path/to/freecad-mcp/dist/index.js
 
 If FreeCAD GUI is not running, the server automatically falls back to headless mode using `freecadcmd`. This works for scripting and automation but you won't see visual output.
 
-The server looks for `freecadcmd` at `/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd` by default. Override with:
+The server looks for `freecadcmd` at `/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd` by default. For Linux AppImage deployments, set `FREECAD_CMD` to the binary inside the extracted AppImage (e.g., `/path/to/squashfs-root/usr/bin/freecadcmd`). The bridge automatically derives `freecadApp` from `dirname(dirname(cmd))`, supporting both macOS bundles and Linux AppImages. Override with:
 
 ```json
 {
@@ -78,6 +78,14 @@ The server looks for `freecadcmd` at `/Applications/FreeCAD.app/Contents/Resourc
   }
 }
 ```
+
+### GUI-Only Tools
+
+Certain advanced tools require the FreeCAD graphical user interface and UI modules (such as `ImportGui`). Specifically, `freecad_import_iges` is a GUI-only tool. When invoked in headless mode, it returns a clear error message instructing you to use GUI mode.
+
+### Bridge Robustness & Serialization
+
+The FreeCAD bridge features robust serialization handling, automatically converting `FreeCAD.Units.Quantity` objects to their numeric `.Value` representation and providing explicit error messages for non-serializable objects.
 
 ## Tool Modules
 
