@@ -467,6 +467,8 @@ ${code}
       const filePath = escapeString(validateFilePath(args.filePath, 'filePath'));
       return bridge.run(`
 ${DOC_PREAMBLE}
+if not FreeCAD.GuiUp:
+    raise ValueError("import_iges requires FreeCAD GUI (ImportGui). Use GUI mode.")
 import ImportGui
 ImportGui.insert("${filePath}", doc.Name)
 doc.recompute()
