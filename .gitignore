@@ -30,5 +30,8 @@ secrets.json
 .vscode/
 .idea/
 
+# OpenCode local config (machine-specific absolute paths, NOT for commit)
+opencode.json
+
 # OS
 Thumbs.db
