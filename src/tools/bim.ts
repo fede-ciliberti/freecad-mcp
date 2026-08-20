@@ -353,11 +353,22 @@ _mcp_result["result"] = {"name": stairs.Name, "label": stairs.Label, "steps": ${
       const objectNames = args.objectNames as string[] | undefined;
       return bridge.run(`
 ${DOC_PREAMBLE}
-from nativeifc import ifc_export
 ${objectNames
   ? `objs = [doc.getObject(n) for n in ${JSON.stringify(objectNames)} if doc.getObject(n)]`
   : `objs = doc.Objects`}
-ifc_export.exportIFC(objs, ${JSON.stringify(filePath)})
+# FreeCAD 1.1.3 IFC export API: the exporter lives in importers.exportIFC.export().
+# Do NOT use "from nativeifc import ifc_export; ifc_export.exportIFC(...)" —
+# exportIFC is a submodule (importers.exportIFC) re-exported as an attribute of
+# nativeifc.ifc_export, not a callable, so that raises "'module' object is not
+# callable". Requires IfcOpenShell (ifcopenshell) on PYTHONPATH.
+try:
+    from importers import exportIFC
+except ImportError as _imp_err:
+    raise RuntimeError(
+        "IFC export requires the 'importers.exportIFC' module (FreeCAD BIM workbench). "
+        "IfcOpenShell (ifcopenshell) must be installed. Import error: " + str(_imp_err)
+    )
+exportIFC.export(objs, ${JSON.stringify(filePath)})
 import os
 _mcp_result["result"] = {"filePath": ${JSON.stringify(filePath)}, "objectCount": len(objs), "size_bytes": os.path.getsize(${JSON.stringify(filePath)})}
 `);

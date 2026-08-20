@@ -298,18 +298,28 @@ ${minSize > 0 ? `mesh.CharacteristicLengthMin = ${minSize}` : ''}
 mesh.ElementOrder = ${JSON.stringify(meshOrder === 1 ? '1st' : '2nd')}
 analysis.addObject(mesh)
 doc.recompute()
-# Try to compute the mesh
+# Compute the mesh via Gmsh. Gmsh may crash (SIGSEGV) in headless AppImage
+# environments without a GUI/OpenGL context; surface a clear error in that case.
 from femmesh.gmshtools import GmshTools
 gmsh = GmshTools(mesh)
-error = gmsh.create_mesh()
+mesh_error = None
+try:
+    mesh_error = gmsh.create_mesh()
+except Exception as _mesh_exc:
+    mesh_error = str(_mesh_exc)
 doc.recompute()
 fem_mesh = mesh.FemMesh
+# FreeCAD 1.1.3 FemMesh API: NodeCount, EdgeCount, FaceCount, VolumeCount,
+# TetraCount (no ElementCount). See src/Mod/Fem/App/FemMesh.pyi.
 _mcp_result["result"] = {
     "name": mesh.Name,
     "nodes": fem_mesh.NodeCount,
-    "elements": fem_mesh.ElementCount,
+    "edges": fem_mesh.EdgeCount,
+    "faces": fem_mesh.FaceCount,
     "volumes": fem_mesh.VolumeCount,
-    "order": ${meshOrder}
+    "tetras": fem_mesh.TetraCount,
+    "order": ${meshOrder},
+    "meshError": mesh_error
 }
 `);
     }
