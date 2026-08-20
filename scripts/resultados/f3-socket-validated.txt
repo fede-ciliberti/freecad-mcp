@@ -1,0 +1,7 @@
+F3-SOCKET VALIDADO (2026-08-20)
+Modo GUI/socket verificado contra FreeCAD 1.1.3 AppImage corriendo con freecad_server.FCMacro (fix serialización).
+- Socket: 127.0.0.1:12345 ACTIVO
+- Bridge auto-detect: "Connected to FreeCAD GUI via socket"
+- freecad_get_edge_info en Box (Length 20/W 30/H 40): {success:true, "length":40, ...}
+- Quantity→.Value serialización en socket: OK (sin error de JSON)
+Estado: PASS (antes diferido en f3-socket-deferred.txt, ahora validado)
