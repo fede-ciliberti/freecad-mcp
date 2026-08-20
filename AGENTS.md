@@ -34,3 +34,7 @@ Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico 
 2. Registrala en `src/index.ts`: import del módulo (si es nuevo), spread en `ALL_TOOLS`, entrada en `TOOL_HANDLERS`, y `case` en el `switch`. Olvidar cualquiera de estos = tool invisible o error "Unknown tool".
 3. Validá todos los inputs.
 4. `npm run build` para verificar.
+
+## Registro de Gaps y Evidencias
+
+- **Obligatoriedad**: Todo gap, limitación estructural o comportamiento inesperado del MCP identificado durante el uso o pruebas debe ser registrado en `docs/MCP_EVIDENCIAS_Y_MEJORAS.md` (siempre que no se encuentre previamente documentado), manteniendo un registro vivo para futuros planes de mejora.
