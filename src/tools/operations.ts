@@ -55,6 +55,7 @@ export const OPERATION_TOOLS = [
           items: { type: 'number' },
           description: 'Edge indices to fillet (1-based). All edges if omitted.',
         },
+        name: { type: 'string', description: 'Optional name for the resulting fillet object' },
       },
       required: ['objectName', 'radius'],
     },
@@ -302,6 +303,7 @@ _mcp_result["result"] = {"name": common.Name, "volume": common.Shape.Volume}
       const objectName = args.objectName as string;
       const radius = validatePositiveNumber(args.radius, 'radius');
       const edgeIndices = args.edgeIndices as number[] | undefined;
+      const filletName = (args.name as string) || 'Fillet';
       const edgesPython = edgeIndices
         ? `[${edgeIndices.map(i => `(${i}, ${radius}, ${radius})`).join(', ')}]`
         : `[(i, ${radius}, ${radius}) for i in range(1, len(obj.Shape.Edges) + 1)]`;
@@ -311,9 +313,17 @@ obj = doc.getObject(${JSON.stringify(objectName)})
 if obj is None:
     raise ValueError("Object not found: ${objectName}")
 edges = ${edgesPython}
-fillet = doc.addObject("Part::Fillet", "Fillet")
-fillet.Base = obj
-fillet.Shape = obj.Shape.makeFillet(${radius}, [obj.Shape.Edges[e[0]-1] for e in edges])
+edge_objs = []
+for e in edges:
+    idx = e[0] - 1
+    if idx < 0 or idx >= len(obj.Shape.Edges):
+        raise ValueError(f"Edge index {e[0]} out of range (1..{len(obj.Shape.Edges)})")
+    edge_objs.append(obj.Shape.Edges[idx])
+fillet_shape = obj.Shape.makeFillet(${radius}, edge_objs)
+if len(fillet_shape.Solids) == 1:
+    fillet_shape = fillet_shape.Solids[0]
+fillet = doc.addObject("Part::Feature", ${JSON.stringify(filletName)})
+fillet.Shape = fillet_shape
 doc.recompute()
 _mcp_result["result"] = {"name": fillet.Name, "edges": len(edges)}
 `);

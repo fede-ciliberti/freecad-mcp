@@ -34,6 +34,13 @@
 
 ## 3. Gaps Específicos Identificados (Roscas y Geometría Compleja)
 
+### B. Fillets que producen Compound inválido (rompen booleanos) — RESUELTO 2026-08-21
+- **Estado**: **FIXEADO** (las tools `freecad_fillet` y `freecad_partdesign_fillet` generan sólidos válidos y el workaround por `execute_python` deja de ser necesario).
+- **Causa raíz y solución aplicada**:
+  - `freecad_fillet` (operations.ts): se reemplazó el feature `Part::Fillet` (que al recomputarse sobreescribía la Shape con un recompute inválido) por un `Part::Feature` limpio con la BRep Shape directa de OpenCASCADE `makeFillet(...)` extrayendo `Solids[0]`. Devuelve un `Part::Solid` válido que soporta cortes booleanos posteriores (`freecad_boolean_cut`).
+  - `freecad_partdesign_fillet` (part-design.ts): se vinculó automáticamente el `PartDesign::Body` contenedor y se registró el objeto mediante `body.addObject(fillet)`, asignando `fillet.Base = (obj, edges)` y `fillet.Radius = radius`. Se agregó validación de entrada y chequeo de `isNull()`.
+- **Resultado**: Ambas tools retornan sólidos válidos utilizables directamente en booleanos y operaciones posteriores sin recurrir a `execute_python`.
+
 ### A. Roscas en Orientaciones Perpendiculares / Horizontales
 - **Problema**: Modelar una rosca real 3D (geometría helicoidal) en un agujero lateral o horizontal de un cilindro es impracticable con las tools puras actuales.
 - **Detalle de fallos**:

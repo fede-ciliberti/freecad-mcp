@@ -1,5 +1,6 @@
 import { FreeCADBridge } from '../freecad-bridge.js';
 import { ToolResult, ToolArgs } from '../types.js';
+import { validatePositiveNumber } from '../validation.js';
 
 export const PART_DESIGN_TOOLS = [
   {
@@ -25,6 +26,8 @@ export const PART_DESIGN_TOOLS = [
       properties: {
         sketchName: { type: 'string', description: 'Name of the sketch defining the pocket profile' },
         depth: { type: 'number', description: 'Pocket depth in mm' },
+        reversed: { type: 'boolean', description: 'Reverse cut direction (into solid if sketch is on base plane)' },
+        symmetric: { type: 'boolean', description: 'Cut symmetrically in both directions' },
         name: { type: 'string', description: 'Optional name for the Pocket feature' },
       },
       required: ['sketchName', 'depth'],
@@ -131,6 +134,8 @@ export const PART_DESIGN_TOOLS = [
         counterboreDepth: { type: 'number', description: 'Counterbore depth (for counterbore type)' },
         countersinkAngle: { type: 'number', description: 'Countersink angle in degrees (for countersink type, default 90)' },
         threaded: { type: 'boolean', description: 'Add threading (default false)' },
+        threadSize: { type: 'string', description: 'Thread size (e.g., "M6", "M8")' },
+        modelThread: { type: 'boolean', description: 'Physically model 3D helical thread geometry (default false)' },
         name: { type: 'string', description: 'Name for the Hole feature' },
       },
       required: ['sketchName', 'diameter'],
@@ -378,6 +383,8 @@ _mcp_result["result"] = {"name": pad.Name, "length": pad.Length.Value, "type": p
     case 'freecad_pocket': {
       const sketchName = args.sketchName as string;
       const depth = args.depth as number;
+      const reversed = (args.reversed as boolean) ?? false;
+      const symmetric = (args.symmetric as boolean) ?? false;
       const pocketName = (args.name as string) || 'Pocket';
       return bridge.run(`
 doc = FreeCAD.ActiveDocument
@@ -394,6 +401,8 @@ if sketch not in body.Group:
 pocket = doc.addObject("PartDesign::Pocket", ${JSON.stringify(pocketName)})
 pocket.Profile = sketch
 pocket.Length = ${depth}
+pocket.Reversed = ${reversed ? 'True' : 'False'}
+pocket.Midplane = ${symmetric ? 'True' : 'False'}
 body.addObject(pocket)
 doc.recompute()
 _mcp_result["result"] = {"name": pocket.Name, "depth": pocket.Length.Value, "type": pocket.TypeId}
@@ -462,7 +471,7 @@ _mcp_result["result"] = {"name": sweep.Name, "profile": ${JSON.stringify(profile
 
     case 'freecad_partdesign_fillet': {
       const objectName = args.objectName as string;
-      const radius = args.radius as number;
+      const radius = validatePositiveNumber(args.radius, 'radius');
       const edgeNames = args.edgeNames as string[] | undefined;
       const filletName = (args.name as string) || 'Fillet';
       const edgesCode = edgeNames
@@ -471,12 +480,40 @@ _mcp_result["result"] = {"name": sweep.Name, "profile": ${JSON.stringify(profile
       return bridge.run(`
 doc = FreeCAD.ActiveDocument
 obj = doc.getObject(${JSON.stringify(objectName)})
+if obj is None:
+    raise ValueError("Object not found: " + ${JSON.stringify(objectName)})
+
+# Ensure Body context for PartDesign::Fillet
+body = None
+for o in doc.Objects:
+    if o.TypeId == "PartDesign::Body" and (obj in o.Group or o.Tip == obj):
+        body = o
+        break
+
+if body is None:
+    for o in doc.Objects:
+        if o.TypeId == "PartDesign::Body":
+            body = o
+            break
+
+if body is None:
+    body = doc.addObject("PartDesign::Body", "Body")
+
+if obj not in body.Group and hasattr(obj, "TypeId") and obj.TypeId.startswith("PartDesign::"):
+    body.addObject(obj)
+
 edges = ${edgesCode}
 fillet = doc.addObject("PartDesign::Fillet", ${JSON.stringify(filletName)})
 fillet.Base = (obj, edges)
 fillet.Radius = ${radius}
+body.addObject(fillet)
 doc.recompute()
-_mcp_result["result"] = {"name": fillet.Name, "radius": fillet.Radius.Value, "edges": edges, "type": fillet.TypeId}
+
+if fillet.Shape.isNull():
+    raise ValueError(f"PartDesign::Fillet produced a null shape for {obj.Name}. Ensure object has valid edges.")
+
+rad_val = fillet.Radius.Value if hasattr(fillet.Radius, "Value") else float(fillet.Radius)
+_mcp_result["result"] = {"name": fillet.Name, "radius": rad_val, "edges": edges, "type": fillet.TypeId}
 `);
     }
 
@@ -509,6 +546,8 @@ _mcp_result["result"] = {"name": cham.Name, "size": cham.Size.Value, "edges": ed
       const counterboreDepth = args.counterboreDepth as number | undefined;
       const countersinkAngle = (args.countersinkAngle as number) ?? 90;
       const threaded = (args.threaded as boolean) ?? false;
+      const threadSize = (args.threadSize as string) || 'M6';
+      const modelThread = (args.modelThread as boolean) ?? false;
       const holeName = (args.name as string) || 'Hole';
       const throughAll = depth === 0;
       return bridge.run(`
@@ -523,11 +562,17 @@ if body is None:
     body = doc.addObject("PartDesign::Body", "Body")
 if sketch not in body.Group:
     body.addObject(sketch)
-# Attach the sketch to the tip face so the Hole has a valid base/support
+# Attach the sketch to the top face so the Hole has a valid base/support
 tip = body.Tip
 if tip is not None and sketch.MapMode == "Deactivated":
+    top_face_name = "Face1"
+    max_z = -1e9
+    for i, f in enumerate(tip.Shape.Faces):
+        if f.CenterOfMass.z > max_z:
+            max_z = f.CenterOfMass.z
+            top_face_name = f"Face{i+1}"
     sketch.MapMode = "FlatFace"
-    sketch.AttachmentSupport = (tip, ["Face6"])
+    sketch.AttachmentSupport = (tip, [top_face_name])
     doc.recompute()
 hole = body.newObject("PartDesign::Hole", ${JSON.stringify(holeName)})
 hole.Profile = sketch
@@ -535,9 +580,23 @@ hole.Diameter = ${diameter}
 ${throughAll ? 'hole.DepthType = "ThroughAll"' : `hole.DepthType = "Dimension"\nhole.Depth = ${depth}`}
 ${holeType === 'counterbore' && counterboreDiameter !== undefined ? `hole.HoleType = "Counterbore"\nhole.HoleCutDiameter = ${counterboreDiameter}\nhole.HoleCutDepth = ${counterboreDepth ?? 3}` : ''}
 ${holeType === 'countersink' ? `hole.HoleType = "Countersink"\nhole.HoleCutCountersinkAngle = ${countersinkAngle}` : ''}
-${threaded ? 'hole.Threaded = True' : ''}
+if ${threaded ? 'True' : 'False'}:
+    hole.Threaded = True
+    for attr in ["ThreadSize", "Size"]:
+        if hasattr(hole, attr):
+            try:
+                setattr(hole, attr, ${JSON.stringify(threadSize)})
+            except:
+                pass
+    if ${modelThread ? 'True' : 'False'}:
+        for attr in ["ThreadModelled", "ModelThread", "Modelled"]:
+            if hasattr(hole, attr):
+                try:
+                    setattr(hole, attr, True)
+                except:
+                    pass
 doc.recompute()
-_mcp_result["result"] = {"name": hole.Name, "diameter": ${diameter}, "depth": ${depth}, "type": ${JSON.stringify(holeType)}}
+_mcp_result["result"] = {"name": hole.Name, "diameter": ${diameter}, "depth": ${depth}, "type": ${JSON.stringify(holeType)}, "threaded": hole.Threaded}
 `);
     }
 
