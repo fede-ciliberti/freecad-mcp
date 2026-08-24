@@ -59,6 +59,19 @@ export const STATE_TOOLS = [
       required: [],
     },
   },
+  {
+    name: 'freecad_snapshot_document',
+    description: 'Capture a structural snapshot of a FreeCAD document (feature tree + topology JSON)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        documentName: { type: 'string', description: 'Document name (uses active document if omitted)' },
+        objectName: { type: 'string', description: 'Optional: snapshot only this object' },
+        includeTopology: { type: 'boolean', description: 'Include detailed topology (faces/edges) and spreadsheet. Default true' },
+      },
+      required: [],
+    },
+  },
 ];
 
 async function runScript(bridge: FreeCADBridge, script: string): Promise<ToolResult> {
@@ -162,6 +175,94 @@ ${docSelection}
 doc.redo()
 doc.recompute()
 _mcp_result["result"] = {"redone": True, "document": doc.Name}
+`,
+        );
+      }
+
+      case 'freecad_snapshot_document': {
+        const docName = args.documentName ? validateObjectName(args.documentName, 'documentName') : undefined;
+        const objName = args.objectName ? validateObjectName(args.objectName, 'objectName') : undefined;
+        const includeTopology = args.includeTopology === undefined ? true : args.includeTopology;
+        if (typeof includeTopology !== 'boolean') {
+          throw new Error('Invalid includeTopology: must be a boolean');
+        }
+
+        const docSelection = docName
+          ? `doc = FreeCAD.getDocument(${JSON.stringify(docName)})\nif doc is None:\n    raise Exception("Document '${docName}' not found")`
+          : `doc = FreeCAD.ActiveDocument\nif doc is None:\n    raise Exception("No active document")`;
+
+        const objectFilter = objName
+          ? `target = doc.getObject(${JSON.stringify(objName)})\nif target is None:\n    raise Exception("Object '${objName}' not found")\nobjects = [target]`
+          : `objects = doc.Objects`;
+
+        const includeTopologyFlag = includeTopology ? 'True' : 'False';
+
+        return await runScript(
+          bridge,
+          `
+${docSelection}
+${objectFilter}
+
+def _vec(v):
+    return {"x": v.x, "y": v.y, "z": v.z}
+
+def _snapshot_object(obj, with_topology):
+    entry = {
+        "name": obj.Name,
+        "label": obj.Label,
+        "typeId": obj.TypeId,
+    }
+    if hasattr(obj, "Shape") and obj.Shape is not None and not obj.Shape.isNull():
+        bb = obj.Shape.BoundBox
+        entry["volume"] = obj.Shape.Volume
+        entry["boundBox"] = {
+            "XMin": bb.XMin, "YMin": bb.YMin, "ZMin": bb.ZMin,
+            "XMax": bb.XMax, "YMax": bb.YMax, "ZMax": bb.ZMax,
+        }
+        if with_topology:
+            faces = []
+            for i, f in enumerate(obj.Shape.Faces):
+                faces.append({
+                    "index": i,
+                    "center": _vec(f.CenterOfMass),
+                    "area": f.Area,
+                    "normal": _vec(f.normalAt(0, 0)),
+                })
+            edges = []
+            for i, e in enumerate(obj.Shape.Edges):
+                v0 = e.Vertexes[0].Point if len(e.Vertexes) > 0 else None
+                v1 = e.Vertexes[1].Point if len(e.Vertexes) > 1 else None
+                edges.append({
+                    "index": i,
+                    "length": e.Length,
+                    "startVertex": _vec(v0) if v0 is not None else None,
+                    "endVertex": _vec(v1) if v1 is not None else None,
+                })
+            entry["topology"] = {"faces": faces, "edges": edges}
+    else:
+        entry["volume"] = None
+
+    if obj.TypeId == "Spreadsheet::Sheet":
+        cells = {}
+        try:
+            for c in obj.Cells:
+                content = obj.get(c).Content
+                expr = obj.get(c).Expression
+                cells[c] = {
+                    "value": content,
+                    "expression": expr if expr is not None else None,
+                }
+        except Exception:
+            cells = {}
+        entry["spreadsheet"] = cells
+
+    return entry
+
+snapshot_objects = [_snapshot_object(o, ${includeTopologyFlag}) for o in objects]
+_mcp_result["result"] = {
+    "document": doc.Name,
+    "objects": snapshot_objects,
+}
 `,
         );
       }
