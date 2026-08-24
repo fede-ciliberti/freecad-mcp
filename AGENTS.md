@@ -42,6 +42,7 @@ Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico 
 ## Estándar de modelado CAD
 
 - **Obligatorio**: Toda creación de partes paramétricas para impresión 3D debe seguir `docs/GUIA_BUENAS_PRACTICAS_CAD.md` (lineamiento maestro). Flujo canónico: hoja `Parametros` → sketch fully constrained → pad → pocket/hole sobre cara → fillet/chamfer sobre el Tip → validación numérica → export STL.
+- **Modificación de piezas**: Toda modificación sobre partes existentes debe clasificarse en la escala M1 a M5 según `docs/METODOLOGIA_CAD_FREECAD.md`. Priorizar M1 paramétrico mediante la hoja `Parametros`. Para cambios estructurales, emplear un flujo transaccional respaldado por `freecad_diff_snapshot` y aplicar `freecad_abort_transaction` ante cualquier regresión para asegurar un rollback efectivo.
 - **Anti-patrones críticos**: no mezclar wrappers MCP con `execute_python` en la misma sesión (corrompe el feature tree); no usar sketches movidos para cortes (rompe el vínculo topológico); no redondear/chamferear sobre features tempranas (pierde cortes posteriores); validar por métricas (BoundBox + volumen), nunca por captura de viewport.
 
 ## Metodología CAD y Skills Disponibles

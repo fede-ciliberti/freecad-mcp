@@ -13,12 +13,13 @@
 3. [Workflow Canónico Ampliado (FreeCAD 1.1.x)](#sección-3-workflow-canónico-ampliado-freecad-11x)
 4. [Análisis de Múltiples Caminos y Tabla Comparativa](#sección-4-análisis-de-múltiples-caminos-y-tabla-comparativa)
 5. [Anti-Patrones Avanzados y Mitigación de TNP](#sección-5-anti-patrones-avanzados-y-mitigación-de-tnp)
-6. [Diseño para Manufactura Aditiva (DfAM)](#sección-6-diseño-para-manufactura-aditiva-dfam)
-7. [Tolerancias, Ajustes y Retracción en Impresión 3D](#sección-7-tolerancias-ajustes-y-retracción-en-impresión-3d)
-8. [Fórmulas de Cálculo Mecánico y Geométrico](#sección-8-fórmulas-de-cálculo-mecánico-y-geométrico)
-9. [Propiedades Mecánicas de Materiales FDM](#sección-9-propiedades-mecánicas-de-materiales-fdm)
-10. [Referencia Completa de Tools MCP por Módulo](#sección-10-referencia-completa-de-tools-mcp-por-módulo)
-11. [Referencias Cruzadas a Documentación del Repositorio](#sección-11-referencias-cruzadas-a-documentación-del-repositorio)
+6. [Modificación de Piezas: Clasificación y Flujo](#sección-6-modificación-de-piezas-clasificación-y-flujo)
+7. [Diseño para Manufactura Aditiva (DfAM)](#sección-7-diseño-para-manufactura-aditiva-dfam)
+8. [Tolerancias, Ajustes y Retracción en Impresión 3D](#sección-8-tolerancias-ajustes-y-retracción-en-impresión-3d)
+9. [Fórmulas de Cálculo Mecánico y Geométrico](#sección-9-fórmulas-de-cálculo-mecánico-y-geométrico)
+10. [Propiedades Mecánicas de Materiales FDM](#sección-10-propiedades-mecánicas-de-materiales-fdm)
+11. [Referencia Completa de Tools MCP por Módulo](#sección-11-referencia-completa-de-tools-mcp-por-módulo)
+12. [Referencias Cruzadas a Documentación del Repositorio](#sección-12-referencias-cruzadas-a-documentación-del-repositorio)
 
 ---
 
@@ -92,7 +93,38 @@ Los anti-patrones representan fallas arquitectónicas que destruyen la paramétr
 
 ---
 
-## Sección 6: Diseño para Manufactura Aditiva (DfAM)
+## Sección 6: Modificación de Piezas: Clasificación y Flujo
+
+Cuando una pieza paramétrica existente debe ser modificada, el agente no debe aplicar cambios a ciegas. Cada modificación se clasifica rigurosamente en una de las cinco categorías de la escala M1 a M5 para garantizar la estabilidad del árbol de operaciones y evitar la corrupción topológica.
+
+### 6.1 Tabla de Clasificación M1 a M5
+
+| Nivel | Tipo de Modificación | Descripción Operativa | Impacto y Criterio |
+|---|---|---|---|
+| **M1** | Modificación paramétrica pura | Editar valores en la hoja de cálculo `Parametros` existente mediante `freecad_spreadsheet_set`. | Siempre preferible. Cero riesgo de rotura topológica si las expresiones están bien enlazadas. |
+| **M2** | Adición al Tip | Agregar nuevos features (cortes, extrusiones, redondeos) al final del árbol de operaciones. | Bajo impacto. Respeta la regla de acumulación sobre el Tip final. |
+| **M3** | Edición de feature existente | Modificar parámetros internos de un feature existente (por ejemplo, cambiar la profundidad de un pocket o el radio de un fillet). | Impacto medio. Verificar que no se alteren índices de referencias posteriores. |
+| **M4** | Eliminación y recreación | Borrar un feature obsoleto y recrearlo con las nuevas especificaciones geométricas. | Impacto medio-alto. Útil cuando la modificación directa de un croquis intermedio es inviable. |
+| **M5** | Inserción en medio del árbol | Insertar una nueva operación o modificar croquis intermedios previos al Tip actual. | Impacto crítico. Requiere confirmación humana estricta porque rompe los vínculos topológicos (TNP). |
+
+### 6.2 Flujo Transaccional y Control de Regresiones
+
+El proceso de modificación automatizada sigue estrictamente un ciclo transaccional con capacidad de rollback para proteger la integridad del modelo:
+
+1. **Snapshot Inicial**: Antes de realizar cualquier cambio, se toma una captura del estado actual del documento invocando `freecad_snapshot_document` o abriendo una transacción con `freecad_begin_transaction`.
+2. **Clasificación del Cambio**: Se determina si la modificación pertenece al nivel M1, M2, M3, M4 o M5. Si se detecta un caso M5, el agente se detiene obligatoriamente para pedir confirmación humana o reformula la tarea como un enfoque M4 o M1.
+3. **Ejecución y Recálculo**: Se aplican las herramientas MCP correspondientes y se fuerza el recálculo completo del documento.
+4. **Evaluación de Diff Estructural**: Se compara el estado resultante con el snapshot inicial utilizando `freecad_diff_snapshot` para analizar variaciones en el volumen, la caja contenedora y el conteo de entidades geométricas.
+5. **Rollback Automático**: Si el diff detecta una regresión geométrica inesperada, pérdida de volumen o errores de resolución en el solver, se invoca inmediatamente `freecad_abort_transaction` para revertir el documento al estado seguro previo.
+6. **Validación y Confirmación**: Una vez verificado el cumplimiento de las cotas objetivo mediante validación numérica, se confirma la operación.
+
+### 6.3 Regla de Oro y Deuda Paramétrica
+
+La modificación por nivel M1 (hoja de cálculo `Parametros`) es siempre la vía principal. Si una modificación requiere alterar directamente un croquis porque la cota involucrada no se encontraba parametrizada en la hoja central, esta deficiencia se cataloga formalmente como deuda paramétrica. El agente debe registrar dicha deuda en `docs/MCP_EVIDENCIAS_Y_MEJORAS.md` para su posterior refactorización. Asimismo, cualquier intervención debe cumplir rigurosamente con la mitigación del Topological Naming Problem (TNP) descrita en la sección 5, evitando por completo la referencia a caras intermedias y prefiriendo planos de referencia formales (Datum Planes).
+
+---
+
+## Sección 7: Diseño para Manufactura Aditiva (DfAM)
 
 Para que un modelo paramétrico pueda ser impreso en 3D sin fallas estructurales, el agente debe incorporar reglas de diseño aditivo desde la concepción geométrica:
 
@@ -104,7 +136,7 @@ Para que un modelo paramétrico pueda ser impreso en 3D sin fallas estructurales
 
 ---
 
-## Sección 7: Tolerancias, Ajustes y Retracción en Impresión 3D
+## Sección 8: Tolerancias, Ajustes y Retracción en Impresión 3D
 
 El cumplimiento de la norma **ISO 286** debe adaptarse a las desviaciones físicas inherentes al proceso de extrusión térmica de polímeros:
 
@@ -115,7 +147,7 @@ El cumplimiento de la norma **ISO 286** debe adaptarse a las desviaciones físic
 
 ---
 
-## Sección 8: Fórmulas de Cálculo Mecánico y Geométrico
+## Sección 9: Fórmulas de Cálculo Mecánico y Geométrico
 
 El agente debe validar analíticamente las dimensiones críticas antes de generar el código CAD mediante las siguientes ecuaciones de referencia (notación plana Unicode):
 
@@ -133,7 +165,7 @@ El agente debe validar analíticamente las dimensiones críticas antes de genera
 
 ---
 
-## Sección 9: Propiedades Mecánicas de Materiales FDM
+## Sección 10: Propiedades Mecánicas de Materiales FDM
 
 Para estimar el comportamiento de las piezas bajo carga analítica o simulación FEM preliminar, se utilizan las siguientes propiedades nominales promedio para filamentos termoplásticos impresos por FDM con 100% de relleno sólido:
 
@@ -146,7 +178,7 @@ Para estimar el comportamiento de las piezas bajo carga analítica o simulación
 
 ---
 
-## Sección 10: Referencia Completa de Tools MCP por Módulo
+## Sección 11: Referencia Completa de Tools MCP por Módulo
 
 Para ejecutar los workflows descritos, el agente utilizará exclusivamente las siguientes herramientas del servidor MCP de FreeCAD, invocándolas con los parámetros estrictos definidos en sus esquemas:
 
@@ -160,7 +192,7 @@ Para ejecutar los workflows descritos, el agente utilizará exclusivamente las s
 
 ---
 
-## Sección 11: Referencias Cruzadas a Documentación del Repositorio
+## Sección 12: Referencias Cruzadas a Documentación del Repositorio
 
 Este documento se integra orgánicamente con los siguientes artefactos de conocimiento del proyecto:
 
