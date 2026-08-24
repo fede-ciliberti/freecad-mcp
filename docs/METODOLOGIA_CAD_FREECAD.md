@@ -58,6 +58,15 @@ Este flujo complementa la `docs/GUIA_BUENAS_PRACTICAS_CAD.md` con un enfoque est
 6. **Validación Numérica**: Consultar el volumen y la caja contenedora mediante `freecad_get_object_info` y `freecad_get_bounding_box`.
 7. **Exportación**: Generar la malla para fabricación con `freecad_export_stl` o conservar el modelo analítico con `freecad_export_step` y `freecad_save_document`.
 
+### Capa de Proceso: Pipeline de Creación Asistida por Agente
+
+Este flujo canónico está envuelto por el pipeline de 5 capas documentado en la `docs/GUIA_BUENAS_PRACTICAS_CAD.md`, el cual garantiza la trazabilidad y calidad mediante:
+1. **Normalización L2/L3**: Especificación geométrica estructurada previa a cualquier llamada de herramientas.
+2. **Plan JSON point-based**: Árbol de features ordenado y determinista en lugar de código libre.
+3. **Ejecución incremental**: Una feature por tool call.
+4. **Snapshot de estado**: Verificación con `freecad_snapshot_document`.
+5. **Auto-Q&A**: Control automático de calidad visual y topológica.
+
 ---
 
 ## Sección 4: Análisis de Múltiples Caminos y Tabla Comparativa
