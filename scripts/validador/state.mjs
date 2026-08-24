@@ -109,6 +109,68 @@ _mcp_result["result"] = {"count": len(doc.Objects)}
     resRedo.text = `Expected 1 object after redo, got count=${checkD.result?.count}`;
   }
 
+  // Test (e): snapshot_document
+  await bridge.execute(`
+if FreeCAD.ActiveDocument is not None:
+    FreeCAD.closeDocument(FreeCAD.ActiveDocument.Name)
+doc = FreeCAD.newDocument("StateDocSnap")
+b = doc.addObject("Part::Box", "BoxSnap")
+b.Length = 10
+b.Width = 10
+b.Height = 10
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+  const resSnap = await runTest('freecad_snapshot_document', {});
+  if (resSnap.ok) {
+    try {
+      const snapData = JSON.parse(resSnap.text);
+      const snap = snapData.result ?? snapData;
+      if (!snap.objects || snap.objects.length !== 1) {
+        resSnap.ok = false;
+        resSnap.text = `Expected 1 object in snapshot, got ${snap.objects?.length}`;
+      } else {
+        const obj = snap.objects[0];
+        const vol = obj.volume;
+        const facesCount = obj.topology?.faces?.length;
+        if (typeof vol !== 'number' || Math.abs(vol - 1000) >= 1) {
+          resSnap.ok = false;
+          resSnap.text = `Expected volume ~1000, got ${vol}`;
+        } else if (facesCount !== 6) {
+          resSnap.ok = false;
+          resSnap.text = `Expected 6 faces in topology, got ${facesCount}`;
+        }
+      }
+    } catch (e) {
+      resSnap.ok = false;
+      resSnap.text = `Failed to parse snapshot JSON: ${e.message}`;
+    }
+  }
+
+  // QA failure / option test: snapshot con includeTopology: false
+  const resNoTopo = await R('freecad_snapshot_document', { includeTopology: false });
+  if (resNoTopo.ok) {
+    try {
+      const parsedNoTopo = JSON.parse(resNoTopo.text);
+      const snapNoTopo = parsedNoTopo.result ?? parsedNoTopo;
+      const objNoTopo = snapNoTopo.objects?.[0];
+      if (objNoTopo && (objNoTopo.topology === undefined || objNoTopo.topology === null)) {
+        console.log(`[PASS] QA failure test: freecad_snapshot_document with includeTopology: false has no topology`);
+      } else {
+        console.log(`[FAIL] QA failure test: freecad_snapshot_document expected topology to be undefined/null, got ${JSON.stringify(objNoTopo?.topology)}`);
+      }
+    } catch (e) {
+      console.log(`[FAIL] QA failure test: freecad_snapshot_document parse error: ${e.message}`);
+    }
+  } else {
+    console.log(`[FAIL] QA failure test: freecad_snapshot_document with includeTopology: false returned error: ${resNoTopo.text}`);
+  }
+
+  // Test (f): diff_snapshot
+  const snapA = JSON.stringify({ objects: [{ name: "BoxSnap", volume: 1000, boundBox: { XMin: 0, YMin: 0, ZMin: 0, XMax: 10, YMax: 10, ZMax: 10 } }] });
+  const snapB = JSON.stringify({ objects: [{ name: "BoxSnap", volume: 1000, boundBox: { XMin: 0, YMin: 0, ZMin: 0, XMax: 10, YMax: 10, ZMax: 10 } }] });
+  await runTest('freecad_diff_snapshot', { snapshotA: snapA, snapshotB: snapB });
+
   // QA failure test: abortTransaction sobre documento inexistente
   const failRes = await R('freecad_abort_transaction', { documentName: 'InexistentDoc' });
   if (!failRes.ok) {
