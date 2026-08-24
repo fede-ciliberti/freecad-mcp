@@ -1,6 +1,6 @@
 import { FreeCADBridge } from '../freecad-bridge.js';
 import { ToolResult, ToolArgs } from '../types.js';
-import { validateObjectName, validateString } from '../validation.js';
+import { validateArray, validateNumber, validateObjectName, validateString } from '../validation.js';
 
 export const STATE_TOOLS = [
   {
@@ -70,6 +70,20 @@ export const STATE_TOOLS = [
         includeTopology: { type: 'boolean', description: 'Include detailed topology (faces/edges) and spreadsheet. Default true' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'freecad_diff_snapshot',
+    description: 'Compute a structural A/B diff between two snapshots with regression detection',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        snapshotA: { type: 'string', description: 'First snapshot JSON (from freecad_snapshot_document)' },
+        snapshotB: { type: 'string', description: 'Second snapshot JSON (from freecad_snapshot_document)' },
+        expectedChanges: { type: 'array', items: { type: 'string' }, description: 'Object names the agent declared it would change' },
+        tolerance: { type: 'number', description: 'Volume/boundBox tolerance as fraction (default 0.001 = 0.1%)' },
+      },
+      required: ['snapshotA', 'snapshotB'],
     },
   },
 ];
@@ -265,6 +279,160 @@ _mcp_result["result"] = {
 }
 `,
         );
+      }
+
+      case 'freecad_diff_snapshot': {
+        const snapshotA = validateString(args.snapshotA, 'snapshotA');
+        const snapshotB = validateString(args.snapshotB, 'snapshotB');
+
+        let expectedChanges: string[] | undefined;
+        if (args.expectedChanges !== undefined) {
+          const arr = validateArray(args.expectedChanges, 'expectedChanges');
+          expectedChanges = arr.map((item, idx) => validateString(item, `expectedChanges[${idx}]`));
+        }
+
+        let tolerance = 0.001;
+        if (args.tolerance !== undefined) {
+          tolerance = validateNumber(args.tolerance, 'tolerance', { min: 0 });
+        }
+
+        let parsedA: any;
+        let parsedB: any;
+
+        try {
+          parsedA = JSON.parse(snapshotA);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            content: [{ type: 'text', text: `Invalid snapshot JSON: ${msg}` }],
+            isError: true,
+          };
+        }
+
+        try {
+          parsedB = JSON.parse(snapshotB);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            content: [{ type: 'text', text: `Invalid snapshot JSON: ${msg}` }],
+            isError: true,
+          };
+        }
+
+        function extractObjects(parsed: any): any[] {
+          if (!parsed || typeof parsed !== 'object') return [];
+          if (Array.isArray(parsed.objects)) return parsed.objects;
+          if (parsed.result && Array.isArray(parsed.result.objects)) return parsed.result.objects;
+          return [];
+        }
+
+        const objectsA = extractObjects(parsedA);
+        const objectsB = extractObjects(parsedB);
+
+        const mapA = new Map<string, any>();
+        for (const obj of objectsA) {
+          if (obj && typeof obj.name === 'string') {
+            mapA.set(obj.name, obj);
+          }
+        }
+
+        const mapB = new Map<string, any>();
+        for (const obj of objectsB) {
+          if (obj && typeof obj.name === 'string') {
+            mapB.set(obj.name, obj);
+          }
+        }
+
+        const intact: string[] = [];
+        const modified: string[] = [];
+        const added: string[] = [];
+        const removed: string[] = [];
+
+        for (const name of mapA.keys()) {
+          if (!mapB.has(name)) {
+            removed.push(name);
+          }
+        }
+
+        for (const name of mapB.keys()) {
+          if (!mapA.has(name)) {
+            added.push(name);
+          }
+        }
+
+        for (const [name, objA] of mapA.entries()) {
+          if (!mapB.has(name)) continue;
+          const objB = mapB.get(name);
+
+          let isModified = false;
+
+          const volA = typeof objA.volume === 'number' && Number.isFinite(objA.volume) ? objA.volume : null;
+          const volB = typeof objB.volume === 'number' && Number.isFinite(objB.volume) ? objB.volume : null;
+
+          if (volA !== null || volB !== null) {
+            if (volA === null || volB === null) {
+              isModified = true;
+            } else {
+              const refVol = Math.abs(volA) > 0 ? Math.abs(volA) : 1;
+              const volDiffFrac = Math.abs(volA - volB) / refVol;
+              if (volDiffFrac > tolerance) {
+                isModified = true;
+              }
+            }
+          }
+
+          if (!isModified) {
+            const bbA = objA.boundBox;
+            const bbB = objB.boundBox;
+            if ((bbA && !bbB) || (!bbA && bbB)) {
+              isModified = true;
+            } else if (bbA && bbB) {
+              const keys = ['XMin', 'YMin', 'ZMin', 'XMax', 'YMax', 'ZMax'] as const;
+              for (const k of keys) {
+                const valA = typeof bbA[k] === 'number' ? bbA[k] : 0;
+                const valB = typeof bbB[k] === 'number' ? bbB[k] : 0;
+                const refVal = Math.abs(valA) > 0 ? Math.abs(valA) : 1;
+                if (Math.abs(valA - valB) / refVal > tolerance) {
+                  isModified = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!isModified) {
+            const facesA = Array.isArray(objA.topology?.faces) ? objA.topology.faces.length : 0;
+            const facesB = Array.isArray(objB.topology?.faces) ? objB.topology.faces.length : 0;
+            if (facesA !== facesB) {
+              isModified = true;
+            }
+          }
+
+          if (isModified) {
+            modified.push(name);
+          } else {
+            intact.push(name);
+          }
+        }
+
+        const expectedSet = new Set(expectedChanges ?? []);
+        const changedNames = new Set([...modified, ...added, ...removed]);
+        const regressions = Array.from(changedNames).filter((name) => !expectedSet.has(name));
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                intact,
+                modified,
+                added,
+                removed,
+                regressions,
+              }),
+            },
+          ],
+        };
       }
 
       default:
