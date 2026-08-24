@@ -75,4 +75,23 @@ Para llevar el servidor MCP al siguiente nivel y cubrir estos gaps sin recurrir 
 3. **Robustecimiento del Pipeline de Roscas**:
    - Ampliar `freecad_hole` o `freecad_subtractive_helix` para aceptar vectores de dirección/eje personalizados (no solo eje Z fijo) y permitir la extrusión de roscas en cualquier orientación espacial.
 4. **Validación Previa de Sweeps**:
-   - Agregar control de normalidad en `freecad_sweep` para evitar que devuelva `shape is invalid` en trayectorias helicoidales o complejas.
+    - Agregar control de normalidad en `freecad_sweep` para evitar que devuelva `shape is invalid` en trayectorias helicoidales o complejas.
+
+---
+
+## 6. Evolución Reciente y Gaps Cerrados (Versión 1.1.0)
+
+1. **Soporte de Transacciones, Undo y Redo (Módulo State)** — **RESUELTO**
+   - *Gap previo*: Ausencia de control transaccional estructurado, exponiendo las sesiones de modelado a estados inconsistentes ante fallos en operaciones booleanas o modificaciones complejas.
+   - *Solución aplicada*: Implementación del módulo `state.ts` con 7 tools (`freecad_begin_transaction`, `freecad_commit_transaction`, `freecad_abort_transaction`, `freecad_undo`, `freecad_redo`, `freecad_diff_snapshot`, `freecad_snapshot`), permitiendo rollback seguro y control de historial de cambios.
+
+2. **Enumeración Topológica y Control de Diferencias (Módulo State / Snapshot)** — **RESUELTO**
+   - *Gap previo*: Falta de visibilidad sobre los cambios estructurales detallados entre estados del documento CAD sin inspección manual.
+   - *Solución aplicada*: Incorporación de `freecad_snapshot` y `freecad_diff_snapshot` para comparar objetos, propiedades y conteo de entidades geométricas entre iteraciones.
+
+3. **Validación Visual y Captura de Pantalla (Módulo View)** — **RESUELTO**
+   - *Gap previo*: Dependencia exclusiva de inspección por BoundBox y métricas de volumen, sin soporte nativo para verificación visual del viewport.
+   - *Solución aplicada*: Creación del módulo `view.ts` con `freecad_take_screenshot` y `freecad_capture_views` (GUI-only) para captura de renders y vistas múltiples de la pieza.
+
+4. **Metodología de Creación Asistida y Modificación M1-M5** — **NUEVA CAPACIDAD**
+   - *Implementación*: Integración de un pipeline de creación en 5 capas (hoja de parámetros, sketch fully constrained, pad, operaciones sobre caras, fillet/chamfer final) y clasificación estricta de modificaciones (escala M1 a M5) respaldada por transacciones y diffs para asegurar robustez en manufactura aditiva y diseño paramétrico.

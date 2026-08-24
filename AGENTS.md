@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico con FreeCAD. 169 tools repartidas en 15 módulos. Target FreeCAD 1.1.3+ (1.0 mínimo).
+Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico con FreeCAD. 174 tools repartidas en 17 módulos (`state.ts`, `view.ts`, etc.). Target FreeCAD 1.1.3+ (1.0 mínimo).
 
 ## Comandos
 
@@ -14,7 +14,7 @@ Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico 
 
 - `src/index.ts` — entrypoint del server MCP. Registra tools vía 4 lugares: import del módulo, spread en `ALL_TOOLS`, entrada en el mapa `TOOL_HANDLERS` (tool name → módulo), y `case` en el `switch` de `CallToolRequestSchema`.
 - `src/freecad-bridge.ts` — `FreeCADBridge`. **Dos modos con auto-detección en la primera llamada**: socket (conecta a la GUI de FreeCAD con el macro corriendo, `127.0.0.1:12345`) o headless (spawn `freecadcmd` + REPL). Si el socket falla a mitad de sesión, baja a headless automáticamente.
-- `src/tools/*.ts` — 15 módulos. Cada uno exporta `<MODULO>_TOOLS` (array de schemas) y `handle<Modulo>Tool(name, args, bridge)`. Cada tool inyecta código Python que se ejecuta vía `bridge.run(...)`.
+- `src/tools/*.ts` — 17 módulos (incluyendo `state.ts` y `view.ts`). Cada uno exporta `<MODULO>_TOOLS` (array de schemas) y `handle<Modulo>Tool(name, args, bridge)`. Cada tool inyecta código Python que se ejecuta vía `bridge.run(...)`.
 - `src/validation.ts` — helpers obligatorios de validación runtime (`validateNumber`, `validatePositiveNumber`, `validateString`, `validateObjectName`, `validateFilePath`, `validateArray`, `escapePythonString`).
 - `src/types.ts` — `FreeCADResult`, `ToolArgs`, `ToolResult`.
 - `freecad_server.FCMacro` — servidor socket Python que corre dentro de la GUI de FreeCAD (no es Node).

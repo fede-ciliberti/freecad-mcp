@@ -1,6 +1,6 @@
 # freecad-mcp
 
-MCP (Model Context Protocol) server for FreeCAD parametric 3D CAD modeling. Provides 169 tools across 15 modules for document management, primitives, booleans, sketching, part design, meshing, FEM, BIM, and more. Target FreeCAD 1.1.3+ (1.0 minimum).
+MCP (Model Context Protocol) server for FreeCAD parametric 3D CAD modeling. Provides 174 tools across 17 modules for document management, primitives, booleans, sketching, part design, meshing, FEM, BIM, state management, visualization, and more. Target FreeCAD 1.1.3+ (1.0 minimum).
 
 ## Prerequisites
 
@@ -83,9 +83,9 @@ The server looks for `freecadcmd` at `/Applications/FreeCAD.app/Contents/Resourc
 
 Certain advanced tools require the FreeCAD graphical user interface and UI modules (such as `ImportGui`). Specifically, `freecad_import_iges` is a GUI-only tool. When invoked in headless mode, it returns a clear error message instructing you to use GUI mode.
 
-### Bridge Robustness & Serialization
+### Bridge Robustness, State Management & Visualization
 
-The FreeCAD bridge features robust serialization handling, automatically converting `FreeCAD.Units.Quantity` objects to their numeric `.Value` representation and providing explicit error messages for non-serializable objects.
+The FreeCAD bridge features robust serialization handling, automatically converting `FreeCAD.Units.Quantity` objects to their numeric `.Value` representation and providing explicit error messages for non-serializable objects. Additionally, State management tools allow transactional control (begin, commit, abort, undo, redo, snapshot, diff), and View tools enable visual inspection and screenshot captures in GUI mode.
 
 ## Tool Modules
 
@@ -106,6 +106,8 @@ The FreeCAD bridge features robust serialization handling, automatically convert
 | FEM | 10 | Analysis, material, constraints, mesh generation, solver |
 | Surface | 8 | Filling, curves on mesh, extending, trimming |
 | Assembly | 8 | Assembly creation, constraints, bill of materials |
+| State | 7 | Snapshot, diff, transactions (begin/commit/abort/undo/redo) |
+| View | 2 | Screenshot, multi-view capture (GUI-only) |
 
 ## Security
 
