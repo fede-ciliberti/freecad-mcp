@@ -202,11 +202,11 @@ _mcp_result["result"] = {"redone": True, "document": doc.Name}
         }
 
         const docSelection = docName
-          ? `doc = FreeCAD.getDocument(${JSON.stringify(docName)})\nif doc is None:\n    raise Exception("Document '${docName}' not found")`
+          ? `doc = FreeCAD.getDocument(${JSON.stringify(docName)})\nif doc is None:\n    raise Exception("Document not found: " + ${JSON.stringify(docName)})`
           : `doc = FreeCAD.ActiveDocument\nif doc is None:\n    raise Exception("No active document")`;
 
         const objectFilter = objName
-          ? `target = doc.getObject(${JSON.stringify(objName)})\nif target is None:\n    raise Exception("Object '${objName}' not found")\nobjects = [target]`
+          ? `target = doc.getObject(${JSON.stringify(objName)})\nif target is None:\n    raise Exception("Object not found: " + ${JSON.stringify(objName)})\nobjects = [target]`
           : `objects = doc.Objects`;
 
         const includeTopologyFlag = includeTopology ? 'True' : 'False';
