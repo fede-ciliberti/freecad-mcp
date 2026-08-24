@@ -32,6 +32,7 @@ const VALIDATORS = [
   'surface.mjs',
   'assembly.mjs',
   'state.mjs',
+  'view.mjs',
 ];
 
 const BRIDGE_QA = join(__dirname, 'resultados', 'bridge-qa.mjs');
