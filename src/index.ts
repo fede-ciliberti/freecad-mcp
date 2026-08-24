@@ -25,6 +25,7 @@ import { FEM_TOOLS, handleFemTool } from './tools/fem.js';
 import { SURFACE_TOOLS, handleSurfaceTool } from './tools/surface.js';
 import { ASSEMBLY_TOOLS, handleAssemblyTool } from './tools/assembly.js';
 import { STATE_TOOLS, handleStateTool } from './tools/state.js';
+import { VIEW_TOOLS, handleViewTool } from './tools/view.js';
 
 const FREECAD_CMD = process.env.FREECAD_CMD || '/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd';
 
@@ -45,6 +46,7 @@ const ALL_TOOLS = [
   ...SURFACE_TOOLS,
   ...ASSEMBLY_TOOLS,
   ...STATE_TOOLS,
+  ...VIEW_TOOLS,
 ];
 
 const TOOL_HANDLERS: Record<string, string> = {};
@@ -64,6 +66,7 @@ for (const tool of FEM_TOOLS) TOOL_HANDLERS[tool.name] = 'fem';
 for (const tool of SURFACE_TOOLS) TOOL_HANDLERS[tool.name] = 'surface';
 for (const tool of ASSEMBLY_TOOLS) TOOL_HANDLERS[tool.name] = 'assembly';
 for (const tool of STATE_TOOLS) TOOL_HANDLERS[tool.name] = 'state';
+for (const tool of VIEW_TOOLS) TOOL_HANDLERS[tool.name] = 'view';
 
 class FreeCADMCPServer {
   private server: Server;
@@ -139,6 +142,8 @@ class FreeCADMCPServer {
             return await handleAssemblyTool(name, safeArgs, this.bridge);
           case 'state':
             return await handleStateTool(name, safeArgs, this.bridge);
+          case 'view':
+            return await handleViewTool(name, safeArgs, this.bridge);
           default:
             return {
               content: [{ type: 'text', text: `No handler for module: ${module}` }],
