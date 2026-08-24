@@ -262,6 +262,173 @@ _mcp_result["result"] = {"ok": 1}
     console.log(`[FAIL] QA failure test: freecad_abort_transaction expected error but succeeded`);
   }
 
+  // =========================================================================
+  // Test End-to-End Pipeline (13 Pasos)
+  // =========================================================================
+  const resE2E = { name: 'freecad_e2e_pipeline (end-to-end)', ok: true, text: '' };
+  const compact = (jsonStr) => JSON.stringify(JSON.parse(jsonStr));
+
+  try {
+    // Paso 1: Crear doc + hoja Parametros + W=20, L=30, H=10
+    await bridge.execute(`
+if FreeCAD.ActiveDocument is not None:
+    FreeCAD.closeDocument(FreeCAD.ActiveDocument.Name)
+doc = FreeCAD.newDocument("StateDocE2E")
+doc.UndoMode = 1
+
+import Part, Sketcher, PartDesign
+
+sheet = doc.addObject("Spreadsheet::Sheet", "Parametros")
+sheet.set("A1", "W"); sheet.set("B1", "20"); sheet.setAlias("B1", "Width")
+sheet.set("A2", "L"); sheet.set("B2", "30"); sheet.setAlias("B2", "Length")
+sheet.set("A3", "H"); sheet.set("B3", "10"); sheet.setAlias("B3", "Height")
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+
+    // Paso 2: Crear sketch rectángulo vinculado a W/L
+    await bridge.execute(`
+doc = FreeCAD.ActiveDocument
+import Part, Sketcher, PartDesign
+
+sketch = doc.addObject("Sketcher::SketchObject", "Sketch")
+sketch.addGeometry(Part.LineSegment(FreeCAD.Vector(0,0,0), FreeCAD.Vector(20,0,0)))
+sketch.addGeometry(Part.LineSegment(FreeCAD.Vector(20,0,0), FreeCAD.Vector(20,30,0)))
+sketch.addGeometry(Part.LineSegment(FreeCAD.Vector(20,30,0), FreeCAD.Vector(0,30,0)))
+sketch.addGeometry(Part.LineSegment(FreeCAD.Vector(0,30,0), FreeCAD.Vector(0,0,0)))
+sketch.addConstraint(Sketcher.Constraint("Coincident", 0, 2, 1, 1))
+sketch.addConstraint(Sketcher.Constraint("Coincident", 1, 2, 2, 1))
+sketch.addConstraint(Sketcher.Constraint("Coincident", 2, 2, 3, 1))
+sketch.addConstraint(Sketcher.Constraint("Coincident", 3, 2, 0, 1))
+sketch.addConstraint(Sketcher.Constraint("Horizontal", 0))
+sketch.addConstraint(Sketcher.Constraint("Vertical", 1))
+sketch.addConstraint(Sketcher.Constraint("Horizontal", 2))
+sketch.addConstraint(Sketcher.Constraint("Vertical", 3))
+sketch.addConstraint(Sketcher.Constraint("Coincident", 0, 1, -1, 1))
+
+idxW = sketch.addConstraint(Sketcher.Constraint("DistanceX", 0, 20))
+sketch.setExpression("Constraints[" + str(idxW) + "]", "Parametros.Width")
+idxL = sketch.addConstraint(Sketcher.Constraint("DistanceY", 1, 30))
+sketch.setExpression("Constraints[" + str(idxL) + "]", "Parametros.Length")
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+
+    // Paso 3: Crear pad vinculado a H
+    await bridge.execute(`
+doc = FreeCAD.ActiveDocument
+sketch = doc.getObject("Sketch")
+
+pad = doc.addObject("PartDesign::Pad", "Pad")
+pad.Profile = sketch
+pad.setExpression("Length", "Parametros.Height")
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+
+    // Paso 4: Snapshot A
+    const resSnapA_E2E = await R('freecad_snapshot_document', { includeTopology: false });
+    if (!resSnapA_E2E.ok) throw new Error(`Paso 4 Snapshot A fallo: ${resSnapA_E2E.text}`);
+    const snapA_E2E = compact(resSnapA_E2E.text);
+
+    // Paso 5: Crear pocket en cara superior
+    await bridge.execute(`
+doc = FreeCAD.ActiveDocument
+import Part, Sketcher, PartDesign
+
+sketchPocket = doc.addObject("Sketcher::SketchObject", "SketchPocket")
+sketchPocket.addGeometry(Part.Circle(FreeCAD.Vector(10,15,0), FreeCAD.Vector(0,0,1), 5))
+
+pocket = doc.addObject("PartDesign::Pocket", "Pocket")
+pocket.Profile = sketchPocket
+pocket.Length = 5.0
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+
+    // Paso 6: Snapshot B
+    const resSnapB_E2E = await R('freecad_snapshot_document', { includeTopology: false });
+    if (!resSnapB_E2E.ok) throw new Error(`Paso 6 Snapshot B fallo: ${resSnapB_E2E.text}`);
+    const snapB_E2E = compact(resSnapB_E2E.text);
+
+    // Paso 7: Diff A/B con expectedChanges: ["Pocket", "SketchPocket"]
+    const resDiffAB_E2E = await R('freecad_diff_snapshot', {
+      snapshotA: snapA_E2E,
+      snapshotB: snapB_E2E,
+      expectedChanges: ['Pocket', 'SketchPocket'],
+    });
+    if (!resDiffAB_E2E.ok) throw new Error(`Paso 7 Diff A/B fallo: ${resDiffAB_E2E.text}`);
+    const diffAB = JSON.parse(resDiffAB_E2E.text);
+    if (!diffAB.added?.includes('Pocket') || !diffAB.intact?.includes('Pad') || !diffAB.intact?.includes('Sketch') || diffAB.regressions?.length !== 0) {
+      throw new Error(`Paso 7 Diff A/B retornó resultados inesperados: ${resDiffAB_E2E.text}`);
+    }
+
+    // Paso 8 & 9: Modificar H=15 en Parametros y recompute
+    await bridge.execute(`
+doc = FreeCAD.ActiveDocument
+sheet = doc.getObject("Parametros")
+sheet.set("B3", "15")
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+
+    // Paso 10: Snapshot C
+    const resSnapC_E2E = await R('freecad_snapshot_document', { includeTopology: false });
+    if (!resSnapC_E2E.ok) throw new Error(`Paso 10 Snapshot C fallo: ${resSnapC_E2E.text}`);
+    const snapC_E2E = compact(resSnapC_E2E.text);
+
+    // Paso 11: Diff B/C con expectedChanges: ["Pad"]
+    const resDiffBC_E2E = await R('freecad_diff_snapshot', {
+      snapshotA: snapB_E2E,
+      snapshotB: snapC_E2E,
+      expectedChanges: ['Pad'],
+    });
+    if (!resDiffBC_E2E.ok) throw new Error(`Paso 11 Diff B/C fallo: ${resDiffBC_E2E.text}`);
+    const diffBC = JSON.parse(resDiffBC_E2E.text);
+
+    // QA failure check: si diff B/C reporta regressions con "Pocket", es un TNP real no mitigado
+    if (diffBC.regressions?.includes('Pocket')) {
+      throw new Error(`Paso 11 Diff B/C detecto regresion no mitigada en Pocket (TNP real): ${resDiffBC_E2E.text}`);
+    }
+    if (!diffBC.modified?.includes('Pad') || !diffBC.intact?.includes('Pocket') || diffBC.regressions?.length !== 0) {
+      throw new Error(`Paso 11 Diff B/C retornó resultados inesperados: ${resDiffBC_E2E.text}`);
+    }
+
+    // Paso 12: Forzar regresión -> abortTransaction restaura C
+    await handleStateTool('freecad_begin_transaction', { name: 'TxE2ERegression' }, bridge);
+    await bridge.execute(`
+doc = FreeCAD.ActiveDocument
+sketch = doc.getObject("Sketch")
+doc.removeObject(sketch.Name)
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+    await handleStateTool('freecad_abort_transaction', {}, bridge);
+
+    // Paso 13: Snapshot D == C (diff D/C vacío)
+    const resSnapD_E2E = await R('freecad_snapshot_document', { includeTopology: false });
+    if (!resSnapD_E2E.ok) throw new Error(`Paso 13 Snapshot D fallo: ${resSnapD_E2E.text}`);
+    const snapD_E2E = compact(resSnapD_E2E.text);
+
+    const resDiffDC_E2E = await R('freecad_diff_snapshot', {
+      snapshotA: snapC_E2E,
+      snapshotB: snapD_E2E,
+    });
+    if (!resDiffDC_E2E.ok) throw new Error(`Paso 13 Diff D/C fallo: ${resDiffDC_E2E.text}`);
+    const diffDC = JSON.parse(resDiffDC_E2E.text);
+    if (diffDC.modified?.length !== 0 || diffDC.added?.length !== 0 || diffDC.removed?.length !== 0 || diffDC.regressions?.length !== 0) {
+      throw new Error(`Paso 13 Diff D/C no esta vacio tras rollback: ${resDiffDC_E2E.text}`);
+    }
+
+    resE2E.text = 'Pipeline end-to-end de 13 pasos completado exitosamente';
+  } catch (err) {
+    resE2E.ok = false;
+    resE2E.text = err.message;
+  }
+
+  report(resE2E);
+  results.push(resE2E);
+
   // Verificar cobertura de STATE_TOOLS
   const testedNames = new Set(results.map(r => r.name));
   const expectedTools = STATE_TOOLS.map(t => t.name);
