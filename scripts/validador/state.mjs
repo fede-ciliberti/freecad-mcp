@@ -167,9 +167,92 @@ _mcp_result["result"] = {"ok": 1}
   }
 
   // Test (f): diff_snapshot
-  const snapA = JSON.stringify({ objects: [{ name: "BoxSnap", volume: 1000, boundBox: { XMin: 0, YMin: 0, ZMin: 0, XMax: 10, YMax: 10, ZMax: 10 } }] });
-  const snapB = JSON.stringify({ objects: [{ name: "BoxSnap", volume: 1000, boundBox: { XMin: 0, YMin: 0, ZMin: 0, XMax: 10, YMax: 10, ZMax: 10 } }] });
-  await runTest('freecad_diff_snapshot', { snapshotA: snapA, snapshotB: snapB });
+  // Escenario 1: crear doc + box 10x10x10 -> snapA; modificar box a 20x20x20 -> snapB; diff A/B con expectedChanges: ["Box"]
+  await bridge.execute(`
+if FreeCAD.ActiveDocument is not None:
+    FreeCAD.closeDocument(FreeCAD.ActiveDocument.Name)
+doc = FreeCAD.newDocument("StateDocDiff")
+b = doc.addObject("Part::Box", "Box")
+b.Length = 10
+b.Width = 10
+b.Height = 10
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+  const resSnapA = await R('freecad_snapshot_document', { includeTopology: false });
+  const snapA = resSnapA.text;
+
+  await bridge.execute(`
+doc = FreeCAD.ActiveDocument
+b = doc.getObject("Box")
+b.Length = 20
+b.Width = 20
+b.Height = 20
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+  const resSnapB = await R('freecad_snapshot_document', { includeTopology: false });
+  const snapB = resSnapB.text;
+
+  const resDiff1 = await runTest('freecad_diff_snapshot', {
+    snapshotA: snapA,
+    snapshotB: snapB,
+    expectedChanges: ['Box'],
+  });
+
+  if (resDiff1.ok) {
+    try {
+      const diff1 = JSON.parse(resDiff1.text);
+      const hasBoxModified = Array.isArray(diff1.modified) && diff1.modified.includes('Box');
+      const noRegressions = Array.isArray(diff1.regressions) && diff1.regressions.length === 0;
+      if (!hasBoxModified || !noRegressions) {
+        resDiff1.ok = false;
+        resDiff1.text = `Expected modified: ['Box'] and regressions: [], got ${resDiff1.text}`;
+      }
+    } catch (e) {
+      resDiff1.ok = false;
+      resDiff1.text = `Failed to parse diff1 JSON: ${e.message}`;
+    }
+  }
+
+  // Escenario 2: agregar cylinder -> snapC; diff B/C sin expectedChanges -> regressions: ["Cylinder"]
+  await bridge.execute(`
+doc = FreeCAD.ActiveDocument
+c = doc.addObject("Part::Cylinder", "Cylinder")
+c.Radius = 5
+c.Height = 20
+doc.recompute()
+_mcp_result["result"] = {"ok": 1}
+`);
+  const resSnapC = await R('freecad_snapshot_document', { includeTopology: false });
+  const snapC = resSnapC.text;
+
+  const resDiff2 = await runTest('freecad_diff_snapshot', {
+    snapshotA: snapB,
+    snapshotB: snapC,
+  });
+
+  if (resDiff2.ok) {
+    try {
+      const diff2 = JSON.parse(resDiff2.text);
+      const hasCylinderRegression = Array.isArray(diff2.regressions) && diff2.regressions.includes('Cylinder');
+      if (!hasCylinderRegression) {
+        resDiff2.ok = false;
+        resDiff2.text = `Expected regressions: ['Cylinder'], got ${resDiff2.text}`;
+      }
+    } catch (e) {
+      resDiff2.ok = false;
+      resDiff2.text = `Failed to parse diff2 JSON: ${e.message}`;
+    }
+  }
+
+  // QA failure: diff con snapshots malformados (JSON inválido)
+  const failDiffRes = await R('freecad_diff_snapshot', { snapshotA: 'not json', snapshotB: '{}' });
+  if (!failDiffRes.ok && failDiffRes.text.includes('Invalid snapshot JSON')) {
+    console.log(`[PASS] QA failure test: freecad_diff_snapshot with invalid JSON returned error: ${failDiffRes.text}`);
+  } else {
+    console.log(`[FAIL] QA failure test: freecad_diff_snapshot expected error for invalid JSON but got ok=${failDiffRes.ok}, text=${failDiffRes.text}`);
+  }
 
   // QA failure test: abortTransaction sobre documento inexistente
   const failRes = await R('freecad_abort_transaction', { documentName: 'InexistentDoc' });
