@@ -83,11 +83,11 @@ Para llevar el servidor MCP al siguiente nivel y cubrir estos gaps sin recurrir 
 
 1. **Soporte de Transacciones, Undo y Redo (Módulo State)** — **RESUELTO**
    - *Gap previo*: Ausencia de control transaccional estructurado, exponiendo las sesiones de modelado a estados inconsistentes ante fallos en operaciones booleanas o modificaciones complejas.
-   - *Solución aplicada*: Implementación del módulo `state.ts` con 7 tools (`freecad_begin_transaction`, `freecad_commit_transaction`, `freecad_abort_transaction`, `freecad_undo`, `freecad_redo`, `freecad_diff_snapshot`, `freecad_snapshot`), permitiendo rollback seguro y control de historial de cambios.
+    - *Solución aplicada*: Implementación del módulo `state.ts` con 7 tools (`freecad_begin_transaction`, `freecad_commit_transaction`, `freecad_abort_transaction`, `freecad_undo`, `freecad_redo`, `freecad_diff_snapshot`, `freecad_snapshot_document`), permitiendo rollback seguro y control de historial de cambios.
 
 2. **Enumeración Topológica y Control de Diferencias (Módulo State / Snapshot)** — **RESUELTO**
    - *Gap previo*: Falta de visibilidad sobre los cambios estructurales detallados entre estados del documento CAD sin inspección manual.
-   - *Solución aplicada*: Incorporación de `freecad_snapshot` y `freecad_diff_snapshot` para comparar objetos, propiedades y conteo de entidades geométricas entre iteraciones.
+    - *Solución aplicada*: Incorporación de `freecad_snapshot_document` y `freecad_diff_snapshot` para comparar objetos, propiedades y conteo de entidades geométricas entre iteraciones.
 
 3. **Validación Visual y Captura de Pantalla (Módulo View)** — **RESUELTO**
    - *Gap previo*: Dependencia exclusiva de inspección por BoundBox y métricas de volumen, sin soporte nativo para verificación visual del viewport.

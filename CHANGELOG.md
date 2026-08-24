@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - 9 new tools across 2 new modules (174 tools total across 17 modules):
-  - `state` module (7 tools): transactional state management (`freecad_begin_transaction`, `freecad_commit_transaction`, `freecad_abort_transaction`, `freecad_undo`, `freecad_redo`, `freecad_diff_snapshot`, `freecad_snapshot`).
+  - `state` module (7 tools): transactional state management (`freecad_begin_transaction`, `freecad_commit_transaction`, `freecad_abort_transaction`, `freecad_undo`, `freecad_redo`, `freecad_diff_snapshot`, `freecad_snapshot_document`).
   - `view` module (2 tools): visual capture and inspection (`freecad_take_screenshot`, `freecad_capture_views` — GUI-only).
 - Methodological updates: 5-layer assisted creation pipeline and M1-M5 modification flow with differential snapshots and rollback support.
 
