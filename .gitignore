@@ -33,5 +33,8 @@ secrets.json
 # OpenCode local config (machine-specific absolute paths, NOT for commit)
 opencode.json
 
+# OpenCode workspace state (drafts, evidence, boulder — not for commit)
+.omo/
+
 # OS
 Thumbs.db

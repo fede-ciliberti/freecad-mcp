@@ -78,7 +78,7 @@ class FreeCADMCPServer {
     this.server = new Server(
       {
         name: 'freecad-mcp',
-        version: '2.0.0',
+        version: '1.2.0',
       },
       {
         capabilities: {
@@ -175,7 +175,7 @@ class FreeCADMCPServer {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     console.error(
-      `FreeCAD MCP Server v2.0.0 running (cmd: ${FREECAD_CMD}, tools: ${ALL_TOOLS.length})`
+      `FreeCAD MCP Server v1.2.0 running (cmd: ${FREECAD_CMD}, tools: ${ALL_TOOLS.length})`
     );
   }
 }
