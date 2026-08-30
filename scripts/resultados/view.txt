@@ -1,0 +1,2 @@
+[PASS] freecad_take_screenshot
+[PASS] freecad_capture_views

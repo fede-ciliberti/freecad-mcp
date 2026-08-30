@@ -48,6 +48,8 @@ Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico 
 ## Metodología CAD y Skills Disponibles
 
 - **Doc Maestro de Metodología**: Toda arquitectura y flujo avanzado debe regirse por `docs/METODOLOGIA_CAD_FREECAD.md` (integrando estándares de ingeniería y buenas prácticas de FreeCAD).
+- **Matriz de Cobertura Universal**: Ver `docs/COBERTURA_SKILLS.md` para el mapeo completo de las 174 tools del MCP.
+- **Anatomía Canónica de Skills**: Todas las skills siguen un diseño estructurado con frontmatter, diagrama de flujo Mermaid, decisiones deterministas SI/ENTONCES, quality gates, tabla de fallos y progressive disclosure.
 - **Instrucción al Agente**: Cargar la skill correspondiente al dominio de trabajo antes de comenzar el modelado.
 - **Skills del Ecosistema FreeCAD**:
   - `freecad-parametric-part`: Creación de piezas paramétricas base y flujos elementales.
@@ -57,3 +59,6 @@ Servidor MCP de TypeScript (ESM, `type: module`) para modelado CAD paramétrico 
   - `freecad-stress-analysis`: Análisis de elementos finitos (FEM) y simulación de fuerzas/esfuerzos.
   - `freecad-dfam`: Diseño para manufactura aditiva (DfAM) e impresión 3D optimizada.
   - `freecad-tolerances`: Gestión de tolerancias geométricas y ajustes mecánicos.
+  - `freecad-modification`: Gestión de modificaciones M1 a M5, refactorización transaccional y control de deuda paramétrica.
+  - `freecad-techdraw`: Creación de planos técnicos 2D, vistas ortogonales, acotado y exportación DXF/SVG.
+  - `freecad-mesh-repair`: Reparación de mallas STL, conversión mesh-to-shape y refinado BRep.

@@ -2,13 +2,13 @@
 
 *Este archivo es el "libro de bitácora" de la automejora. Lo lee SIEMPRE el equipo de automejora al abrir un ciclo (ver skill `mcp-freecad-automejora`). Mantenerlo fresco: cada cambio del MCP que afecte a futuras mejoras se registra acá.*
 
-*Última actualización: 2026-08-23*
+*Última actualización: 2026-08-24*
 
 ---
 
 ## 1. Estado actual del MCP
 
-- **Versión**: 1.1.0 (package.json). Target FreeCAD 1.1.3+ (mínimo 1.0).
+- **Versión**: 1.2.0 (package.json / changelog). Target FreeCAD 1.1.3+ (mínimo 1.0).
 - **Tools**: 174 en 17 módulos.
 - **Compatibilidad validada**: 100% (174/174 tests PASS) frente a FreeCAD 1.1.3 headless + modo GUI socket.
 - **Único FAIL estructural**: `freecad_import_iges` (requiere módulo GUI `ImportGui`, limitación de entorno).
@@ -17,6 +17,7 @@
 
 > Formato: fecha | módulo/tool | cambio | impacto para futuras mejoras.
 
+- 2026-08-24 | skills/docs | Rediseño de 12 skills con anatomía canónica, 3 nuevas skills y matriz de cobertura universal (174/174 tools). | Trazabilidad completa y gobierno determinista de todo el MCP.
 - 2026-08-23 | state/view | 9 tools nuevas (transacciones, snapshot, diff, screenshot) + metodología M1-M5 | Pipeline trazable de creación/modificación y control transaccional completo.
 
 - 2026-08-21 | operations/part-design | `freecad_fillet` + `freecad_partdesign_fillet` fixeados (ya no producen Compound/NULL; generan Solid válido que soporta boolean cut). | Fillets ahora encadenables con `boolean_cut` sin `execute_python`.

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-24
+
+### Added
+- Rediseño y expansión del ecosistema de skills y documentación:
+  - 3 nuevas skills integradas: `freecad-modification` (escala M1 a M5 y transacciones), `freecad-techdraw` (planos 2D y exportacion DXF/SVG), y `freecad-mesh-repair` (reparacion de mallas STL y mesh-to-shape).
+  - Anatomía canónica estandarizada para todas las skills (frontmatter, diagramas Mermaid, decisiones SI/ENTONCES, quality gates y tabla de fallos).
+  - Matriz de cobertura universal (`docs/COBERTURA_SKILLS.md`) mapeando el 100% de las 174 tools del MCP.
+
 ## [1.1.0] - 2026-08-23
 
 ### Added

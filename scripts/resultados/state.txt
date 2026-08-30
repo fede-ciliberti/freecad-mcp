@@ -1,0 +1,10 @@
+[PASS] freecad_begin_transaction
+[PASS] freecad_commit_transaction
+[PASS] freecad_begin_transaction
+[PASS] freecad_abort_transaction
+[PASS] freecad_undo
+[PASS] freecad_redo
+[PASS] freecad_snapshot_document
+[PASS] freecad_diff_snapshot
+[PASS] freecad_diff_snapshot
+[PASS] freecad_e2e_pipeline (end-to-end)
