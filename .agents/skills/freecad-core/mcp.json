@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "freecad": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/home/fciliberti/Trabajos/Tools/freecad-mcp/dist/index.js"],
+      "env": {
+        "FREECAD_CMD": "/home/fciliberti/Trabajos/Tools/freecad-bin/squashfs-root/usr/bin/freecadcmd"
+      }
+    }
+  }
+}
