@@ -133,7 +133,7 @@ export const IMPORT_EXPORT_TOOLS = [
   },
   {
     name: 'freecad_execute_python',
-    description: 'Execute arbitrary FreeCAD Python code. WARNING: This tool runs arbitrary Python code with full system access. Only use in trusted environments. The code runs in a context with FreeCAD and Part already imported. Set _mcp_result["result"] to return data.',
+    description: 'ULTIMO RECURSO — Execute arbitrary FreeCAD Python code with full system access. PREFERIR PartDesign MCP (Body/Sketch/Pad/Pocket) para piezas paramétricas. Usar SOLO cuando MCP no alcanza: import STEP/IGES/STL, FEM, superficies Gordon/Coons, helix custom, o el gate_parametrico.py (scripts/gate_parametrico.py). Si se crea volumen principal con Part::Feature (Part.makeBox/Cylinder booleanos), el gate paramétrico lo rechazará. Justificar en código por qué MCP no alcanza.',
     inputSchema: {
       type: 'object' as const,
       properties: {
