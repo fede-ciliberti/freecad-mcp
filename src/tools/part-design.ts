@@ -519,7 +519,7 @@ _mcp_result["result"] = {"name": fillet.Name, "radius": rad_val, "edges": edges,
 
     case 'freecad_partdesign_chamfer': {
       const objectName = args.objectName as string;
-      const size = args.size as number;
+      const size = validatePositiveNumber(args.size, 'size');
       const edgeNames = args.edgeNames as string[] | undefined;
       const chamferName = (args.name as string) || 'Chamfer';
       const edgesCode = edgeNames
@@ -528,12 +528,40 @@ _mcp_result["result"] = {"name": fillet.Name, "radius": rad_val, "edges": edges,
       return bridge.run(`
 doc = FreeCAD.ActiveDocument
 obj = doc.getObject(${JSON.stringify(objectName)})
+if obj is None:
+    raise ValueError("Object not found: " + ${JSON.stringify(objectName)})
+
+# Ensure Body context for PartDesign::Chamfer
+body = None
+for o in doc.Objects:
+    if o.TypeId == "PartDesign::Body" and (obj in o.Group or o.Tip == obj):
+        body = o
+        break
+
+if body is None:
+    for o in doc.Objects:
+        if o.TypeId == "PartDesign::Body":
+            body = o
+            break
+
+if body is None:
+    body = doc.addObject("PartDesign::Body", "Body")
+
+if obj not in body.Group and hasattr(obj, "TypeId") and obj.TypeId.startswith("PartDesign::"):
+    body.addObject(obj)
+
 edges = ${edgesCode}
 cham = doc.addObject("PartDesign::Chamfer", ${JSON.stringify(chamferName)})
 cham.Base = (obj, edges)
 cham.Size = ${size}
+body.addObject(cham)
 doc.recompute()
-_mcp_result["result"] = {"name": cham.Name, "size": cham.Size.Value, "edges": edges, "type": cham.TypeId}
+
+if cham.Shape.isNull():
+    raise ValueError(f"PartDesign::Chamfer produced a null shape for {obj.Name}. Ensure object has valid edges.")
+
+size_val = cham.Size.Value if hasattr(cham.Size, "Value") else float(cham.Size)
+_mcp_result["result"] = {"name": cham.Name, "size": size_val, "edges": edges, "type": cham.TypeId}
 `);
     }
 
